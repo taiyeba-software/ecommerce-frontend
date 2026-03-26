@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { gsap } from 'gsap';
 import api from '@/api/axiosInstance';
 import { useAuth } from '../context/AuthContext';
+import { isAdminOrSeller } from "../utils/role";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -82,7 +83,7 @@ const AdminDashboard = () => {
   const handleDeleteOrder = async (orderId) => {
 
     // ✅ Admin check FIRST
-    if (user?.role !== "admin") {
+    if (!isAdminOrSeller(user)) {
       return toast.error("Only admin can delete the order");
     }
 

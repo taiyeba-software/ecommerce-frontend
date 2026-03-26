@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import toast from "react-hot-toast";
 import { ProductContext } from "./ProductContext";
 import { normalizeId } from "../lib/utils";
+import { isAdminOrSeller } from "../utils/role";
 import api from "@/api/axiosInstance";
 
 export const ProductProvider = ({ children }) => {
@@ -60,7 +61,7 @@ export const ProductProvider = ({ children }) => {
 
   // 🟢 Add new product (Admin)
   const addProduct = async (formData, user) => {
-    if (user?.role !== "admin") return toast.error("Not authorized!");
+    if (!isAdminOrSeller(user)) return toast.error("Not authorized!");
     try {
       const { data } = await api.post("/products", formData);
       setProducts((prev) => [data.product, ...prev]);
@@ -75,7 +76,7 @@ export const ProductProvider = ({ children }) => {
 
   // 🟢 Edit product (Admin)
   const editProduct = async (id, updatedProduct, user) => {
-    if (user?.role !== "admin") return toast.error("Not authorized!");
+    if (!isAdminOrSeller(user)) return toast.error("Not authorized!");
     try {
       const { data } = await api.patch(`/products/${normalizeId(id)}`, updatedProduct);
       setProducts((prev) =>
@@ -90,7 +91,7 @@ export const ProductProvider = ({ children }) => {
 
   // 🟢 Delete product (Admin)
   const deleteProduct = async (id, user) => {
-    if (user?.role !== "admin") return toast.error("Not authorized!");
+    if (!isAdminOrSeller(user)) return toast.error("Not authorized!");
     try {
       await api.delete(`/products/${normalizeId(id)}`);
       setProducts((prev) => prev.filter((p) => normalizeId(p._id) !== normalizeId(id)));

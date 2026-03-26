@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useProducts } from "../context/useProducts";
 import { useAuth } from "../context/AuthContext";
+import { isAdminOrSeller } from "../utils/role";
 
 const AddProduct = () => {
   const { addProduct } = useProducts();
@@ -19,7 +20,7 @@ const AddProduct = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!user) return alert("You must be logged in to add a product");
+    if (!user) return;
 
     const formData = new FormData();
     formData.append("name", name);
@@ -33,6 +34,14 @@ const AddProduct = () => {
 
     setName(""); setDescription(""); setPrice(""); setStock(""); setCategory(""); setImages([]);
   };
+
+  if (!user) {
+    return <p className="text-center mt-10">Loading...</p>;
+  }
+
+  if (!isAdminOrSeller(user)) {
+    return <p className="text-center mt-10 text-red-500">Access denied.</p>;
+  }
 
   return (
     <div className="container mx-auto p-6">

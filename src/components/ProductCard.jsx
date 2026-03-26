@@ -3,6 +3,7 @@ import { useProducts } from "../context/useProducts";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 import { normalizeId } from "../lib/utils";
+import { isAdminOrSeller } from "../utils/role";
 
 const ProductCard = ({ product }) => {
   const { user } = useAuth();
@@ -42,7 +43,7 @@ const ProductCard = ({ product }) => {
         </button>
       </div>
 
-      {user?.role === "admin" && (
+      {isAdminOrSeller(user) && (
         <button
           onClick={handleDelete}
           className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md transition"

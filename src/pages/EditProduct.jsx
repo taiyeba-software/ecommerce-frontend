@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useProducts } from "../context/useProducts";
 import { useAuth } from "../context/AuthContext";
+import { isAdminOrSeller } from "../utils/role";
 
 const EditProduct = () => {
   const { id } = useParams(); // product id from URL
@@ -40,7 +41,11 @@ const EditProduct = () => {
     editProduct(id, { ...form, price: parseFloat(form.price) }, user);
   };
 
-  if (user?.role !== "admin") {
+  if (!user) {
+    return <p className="text-center mt-10">Loading...</p>;
+  }
+
+  if (!isAdminOrSeller(user)) {
     return <p className="text-center mt-10 text-red-500">Access denied.</p>;
   }
 

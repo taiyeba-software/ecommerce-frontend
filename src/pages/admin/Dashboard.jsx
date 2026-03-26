@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { AuthContext } from "../../context/AuthContext";
 import api from "@/api/axiosInstance";
+import { isAdminOrSeller } from "../../utils/role";
 
 const Dashboard = () => {
   const { user } = useContext(AuthContext);
@@ -34,10 +35,11 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
-  const role = (user?.role || "").toLowerCase();
-  const canAccessAdmin = !!user && (role === "admin" || role === "seller" || user?.isAdmin === true);
+  if (!user) {
+    return <p className="p-10">Loading...</p>;
+  }
 
-  if (!canAccessAdmin) {
+  if (!isAdminOrSeller(user)) {
     return <div className="p-10 text-red-500">Access Denied</div>;
   }
 
