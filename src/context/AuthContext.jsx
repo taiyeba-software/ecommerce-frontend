@@ -6,15 +6,46 @@ import api from "@/api/axiosInstance";
 
 export const AuthContext = createContext();
 
+const toRole = (value) => (typeof value === "string" ? value.trim().toLowerCase() : "");
+
 const normalizeUser = (rawUser) => {
   if (!rawUser) return null;
-  if (rawUser.role) return rawUser;
+  const role = toRole(rawUser.role);
+  if (role) return { ...rawUser, role };
   if (rawUser.isAdmin === true) return { ...rawUser, role: "admin" };
-  return rawUser;
+  return { ...rawUser };
+};
+
+const extractUserFromAuthPayload = (data) => {
+  if (!data) return null;
+  if (data.user) return normalizeUser(data.user);
+  if (data.data?.user) return normalizeUser(data.data.user);
+  if (data.profile) return normalizeUser(data.profile);
+  if (data.data?.profile) return normalizeUser(data.data.profile);
+  return normalizeUser(data);
 };
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+
+  const hydrateFromProfile = async (fallbackUser = null) => {
+    try {
+      const { data } = await api.get("/auth/profile");
+      const profileUser = extractUserFromAuthPayload(data);
+      if (profileUser) {
+        setUser(profileUser);
+        localStorage.setItem("user", JSON.stringify(profileUser));
+        return profileUser;
+      }
+    } catch {
+      // Keep silent: profile endpoint may fail if not authenticated yet.
+    }
+    if (fallbackUser) {
+      setUser(fallbackUser);
+      localStorage.setItem("user", JSON.stringify(fallbackUser));
+    }
+    return fallbackUser;
+  };
 
   // Example: fetch user info from API or localStorage
   useEffect(() => {
@@ -23,15 +54,22 @@ export const AuthProvider = ({ children }) => {
       const parsedUser = normalizeUser(JSON.parse(storedUser));
       setUser(parsedUser);
       localStorage.setItem("user", JSON.stringify(parsedUser));
+      if (!parsedUser?.role) {
+        hydrateFromProfile(parsedUser);
+      }
     }
   }, []);
 
   const login = async (email, password) => {
     try {
       const { data } = await api.post("/auth/login", { email, password });
-      const normalizedUser = normalizeUser(data.user);
-      setUser(normalizedUser);
-      localStorage.setItem("user", JSON.stringify(normalizedUser));
+      const normalizedUser = extractUserFromAuthPayload(data);
+      if (normalizedUser?.role) {
+        setUser(normalizedUser);
+        localStorage.setItem("user", JSON.stringify(normalizedUser));
+      } else {
+        await hydrateFromProfile(normalizedUser);
+      }
       toast.success("Logged in successfully!");
     } catch (err) {
       toast.error(err.response?.data?.message || err.message);
@@ -41,9 +79,13 @@ export const AuthProvider = ({ children }) => {
   const register = async (name, email, password) => {
     try {
       const { data } = await api.post("/auth/register", { name, email, password });
-      const normalizedUser = normalizeUser(data.user);
-      setUser(normalizedUser);
-      localStorage.setItem("user", JSON.stringify(normalizedUser));
+      const normalizedUser = extractUserFromAuthPayload(data);
+      if (normalizedUser?.role) {
+        setUser(normalizedUser);
+        localStorage.setItem("user", JSON.stringify(normalizedUser));
+      } else {
+        await hydrateFromProfile(normalizedUser);
+      }
       toast.success("Registered successfully!");
     } catch (err) {
       toast.error(err.response?.data?.message || err.message);

@@ -95,7 +95,10 @@ const Orders = () => {
     return statusMap[(status || "").toLowerCase()] || status || "Unknown";
   };
 
-  if (!user || (user.role !== "admin" && user.role !== "seller")) {
+  const role = (user?.role || "").toLowerCase();
+  const canAccessAdmin = !!user && (role === "admin" || role === "seller" || user?.isAdmin === true);
+
+  if (!canAccessAdmin) {
     return <div className="p-10 text-red-500">Access Denied</div>;
   }
 
