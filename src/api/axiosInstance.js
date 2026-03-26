@@ -1,7 +1,8 @@
 import axios from "axios";
 
-const api = axios.create({
+const axiosInstance = axios.create({
   baseURL: "/api",
+  withCredentials: true, // cookie-based auth
 });
 
-export default api;
+export default axiosInstance;

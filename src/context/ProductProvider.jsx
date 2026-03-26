@@ -77,7 +77,7 @@ export const ProductProvider = ({ children }) => {
   const editProduct = async (id, updatedProduct, user) => {
     if (user?.role !== "admin") return toast.error("Not authorized!");
     try {
-      const { data } = await api.put(`/products/${normalizeId(id)}`, updatedProduct);
+      const { data } = await api.patch(`/products/${normalizeId(id)}`, updatedProduct);
       setProducts((prev) =>
         prev.map((p) => (normalizeId(p._id) === normalizeId(id) ? data.product || data : p))
       );
@@ -151,7 +151,7 @@ export const ProductProvider = ({ children }) => {
     }
 
     try {
-      await api.put(`/cart/items/${productId}`, { qty: newQty });
+      await api.patch(`/cart/items/${productId}`, { quantity: newQty });
       toast.success("Quantity updated!");
     } catch (err) {
       console.error("updateCartItemQuantity error:", err);

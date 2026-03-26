@@ -6,7 +6,9 @@ import NotFound from "./pages/NotFound";
 import ProductListing from "./pages/ProductListing"; // Main product page
 import ProductDetail from "./pages/ProductDetail";   // Single product page
 import CartPage from "./pages/CartPage";
-import AdminDashboard from "./pages/AdminDashboard";
+import Dashboard from "./pages/admin/Dashboard";
+import Products from "./pages/admin/Products";
+import Orders from "./pages/admin/Orders";
 
 // Components
 import AuthModal from "./components/modals/AuthModal";
@@ -19,7 +21,9 @@ function App() {
         <Route path="/products" element={<ProductListing />} />
         <Route path="/products/:id" element={<ProductDetail />} />
         <Route path="/cart" element={<CartPage />} />
-        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin" element={<Dashboard />} />
+        <Route path="/admin/products" element={<Products />} />
+        <Route path="/admin/orders" element={<Orders />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
 
