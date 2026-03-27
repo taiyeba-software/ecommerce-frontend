@@ -31,7 +31,7 @@ The main data flow is:
 UI component -> Context action -> Axios client -> `/api/*` -> backend response -> UI update/toast.
 
 `src/api/axiosInstance.js` sets `baseURL: "/api"`. In production, `vercel.json` rewrites:
-- `/api/(.*)` -> `https://backend-rajkonna.onrender.com/api/$1`
+- `/api/(.*)` -> `https://ecommerce-backend-api-wyxt.onrender.com/api/$1`
 - all other routes -> `/` (SPA fallback)
 
 Auth logic lives in `src/context/AuthContext.jsx` (login/register/logout + localStorage persistence). Product and cart logic lives in `src/context/ProductProvider.jsx` (fetch products, product CRUD, cart item updates). Components/pages call these actions and render loading/error states.

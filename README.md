@@ -53,12 +53,12 @@ flowchart LR
 ### Production Routing to Backend
 
 - File: `vercel.json`
-- Rewrite: `/api/(.*)` -> `https://backend-rajkonna.onrender.com/api/$1`
+- Rewrite: `/api/(.*)` -> `https://ecommerce-backend-api-wyxt.onrender.com/api/$1`
 
 So in production:
 
 - Browser request: `/api/products`
-- Vercel forwards to: `https://backend-rajkonna.onrender.com/api/products`
+- Vercel forwards to: `https://ecommerce-backend-api-wyxt.onrender.com/api/products`
 
 ### Feature to Endpoint Map
 
@@ -135,7 +135,7 @@ npm run preview
 ## Environment Notes
 
 - `.env` includes `VITE_API_URL=http://localhost:5000/api`
-- `.env.production` includes `VITE_API_URL=https://backend-rajkonna.onrender.com/api`
+- `.env.production` includes `VITE_API_URL=https://ecommerce-backend-api-wyxt.onrender.com/api`
 
 Important: The current axios client uses `"/api"` directly, and production relies on `vercel.json` rewrites. If you want local dev to hit backend automatically through the same `/api` path, add a Vite dev proxy or update axios baseURL to use `import.meta.env.VITE_API_URL`.
 
