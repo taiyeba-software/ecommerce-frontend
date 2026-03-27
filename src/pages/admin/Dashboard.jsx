@@ -7,6 +7,7 @@ import { isAdminOrSeller } from "../../utils/role";
 
 const Dashboard = () => {
   const { user } = useContext(AuthContext);
+  console.log("USER DEBUG:", user);
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);

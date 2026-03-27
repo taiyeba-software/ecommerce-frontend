@@ -7,6 +7,7 @@ import { isAdminOrSeller } from "../../utils/role";
 
 const Products = () => {
   const { user } = useContext(AuthContext);
+  console.log("USER DEBUG:", user);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
