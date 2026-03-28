@@ -178,9 +178,9 @@ const Products = () => {
 
   const editButtonStyle = {
     ...actionButtonBase,
-    background: "linear-gradient(135deg, #ffe0b2, #ffcc80)",
-    color: "#4a2c0a",
-    borderColor: "#e6b96b",
+    background: "linear-gradient(135deg, #b7e4c7, #95d5b2)",
+    color: "#1b4332",
+    borderColor: "#74c69d",
   };
 
   const deleteButtonStyle = {

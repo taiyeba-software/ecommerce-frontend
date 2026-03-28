@@ -98,7 +98,7 @@ export default function AuthModal() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md"
       onMouseDown={handleOverlayClick}
       aria-modal="true"
       role="dialog"
@@ -106,112 +106,153 @@ export default function AuthModal() {
       <div
         ref={dialogRef}
         onMouseDown={(e) => e.stopPropagation()}
-        className="w-full max-w-md mx-4 clip-card bg-background/95 border border-border p-6 rounded-2xl shadow-2xl animate-fade-in font-mplus"
-        style={{ backdropFilter: "blur(6px)" }}
+        className="w-full max-w-md mx-4 rounded-3xl shadow-2xl animate-fade-in font-mplus overflow-hidden"
+        style={{
+          background: "linear-gradient(135deg, hsl(340, 26%, 70%) 0%, hsl(359, 55%, 87%) 100%)",
+          backdropFilter: "blur(8px)",
+          border: "2px solid hsl(30, 20%, 81%)"
+        }}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-edu text-amber-400">
-            {modalType === "login" ? "Welcome Back" : "Create your account"}
-          </h3>
+        {/* Gradient Header */}
+        <div
+          className="px-6 pt-8 pb-6 text-center relative overflow-hidden"
+          style={{ background: "linear-gradient(to bottom, hsl(359, 55%, 87%), hsl(30, 20%, 81%))" }}
+        >
+          <div className="absolute inset-0 opacity-10" style={{
+            backgroundImage: "radial-gradient(circle at 20% 50%, hsl(26, 44%, 89%), transparent 50%)"
+          }}></div>
+          <div className="relative z-10">
+            <h3 className="text-3xl font-bold text-gray-800 mb-2 font-edu"
+              style={{ textShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
+              {modalType === "login" ? "Welcome Back" : "Join Rajkonna"}
+            </h3>
+            <p className="text-sm text-gray-600 font-mplus">
+              {modalType === "login" ? "Sign in to your account" : "Create your Rajkonna account"}
+            </p>
+          </div>
           <button
             onClick={closeModal}
             aria-label="Close"
-            className="rounded-md text-gray-300 hover:text-amber-400 transition-colors"
+            className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/30 transition-all duration-200 text-gray-700 hover:text-gray-900"
           >
-            <X className="h-5 w-5" />
+            <X className="h-6 w-6" />
           </button>
         </div>
 
-        {/* Error */}
-        {error && (
-          <div className="mb-3 text-sm text-red-400 bg-red-900/10 border border-red-900/10 rounded px-3 py-2">
-            {error}
-          </div>
-        )}
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {modalType === "register" && (
-            <div>
-              <label className="block text-sm text-foreground/80 mb-1">Full name</label>
-              <input
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                placeholder="John Doe"
-                className="w-full px-3 py-2 rounded-lg border border-border bg-card1 text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-400"
-                disabled={isSubmitting}
-                autoComplete="name"
-                required
-              />
+        {/* Form Container */}
+        <div className="px-6 py-8 bg-white/90" style={{ background: "linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.92))" }}>
+          {/* Error Alert */}
+          {error && (
+            <div className="mb-5 p-3 rounded-xl border-2 border-red-300 bg-red-100/60 text-red-700 text-sm font-medium animate-fade-in"
+              style={{ boxShadow: "0 4px 12px rgba(239, 68, 68, 0.15)" }}>
+              <span>⚠️ {error}</span>
             </div>
           )}
 
-          <div>
-            <label className="block text-sm text-foreground/80 mb-1">Email</label>
-            <input
-              name="email"
-              type="email"
-              value={form.email}
-              onChange={handleChange}
-              placeholder="you@example.com"
-              className="w-full px-3 py-2 rounded-lg border border-border bg-card1 text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-400"
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Name Field (Register only) */}
+            {modalType === "register" && (
+              <div className="group">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+                <div className="relative">
+                  <input
+                    name="name"
+                    value={form.name}
+                    onChange={handleChange}
+                    placeholder="John Doe"
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:border-2 transition-all duration-200 focus:shadow-lg"
+                    style={{ focusBorderColor: "hsl(359, 55%, 87%)" }}
+                    disabled={isSubmitting}
+                    autoComplete="name"
+                    required
+                    onFocus={(e) => e.target.style.borderColor = "hsl(359, 55%, 87%)"}
+                    onBlur={(e) => e.target.style.borderColor = "hsl(210, 14%, 83%)"}
+                  />
+                  <div className="absolute right-3 top-3 text-lg">👤</div>
+                </div>
+              </div>
+            )}
+
+            {/* Email Field */}
+            <div className="group">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+              <div className="relative">
+                <input
+                  name="email"
+                  type="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  placeholder="you@example.com"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:border-2 transition-all duration-200 focus:shadow-lg"
+                  style={{ focusBorderColor: "hsl(359, 55%, 87%)" }}
+                  disabled={isSubmitting}
+                  autoComplete="email"
+                  required
+                  onFocus={(e) => e.target.style.borderColor = "hsl(359, 55%, 87%)"}
+                  onBlur={(e) => e.target.style.borderColor = "hsl(210, 14%, 83%)"}
+                />
+                <div className="absolute right-3 top-3 text-lg">✉️</div>
+              </div>
+            </div>
+
+            {/* Password Field */}
+            <div className="group">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+              <div className="relative">
+                <input
+                  name="password"
+                  type="password"
+                  value={form.password}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:border-2 transition-all duration-200 focus:shadow-lg"
+                  style={{ focusBorderColor: "hsl(359, 55%, 87%)" }}
+                  disabled={isSubmitting}
+                  autoComplete={modalType === "login" ? "current-password" : "new-password"}
+                  required
+                  onFocus={(e) => e.target.style.borderColor = "hsl(359, 55%, 87%)"}
+                  onBlur={(e) => e.target.style.borderColor = "hsl(210, 14%, 83%)"}
+                />
+                <div className="absolute right-3 top-3 text-lg">🔒</div>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
               disabled={isSubmitting}
-              autoComplete="email"
-              required
-            />
-          </div>
+              className="w-full py-3 mt-6 rounded-full font-bold text-white text-lg transition-all duration-300 transform hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+              style={{
+                background: "linear-gradient(135deg, hsl(359, 55%, 87%) 0%, hsl(15, 22%, 46%) 100%)",
+                boxShadow: "0 8px 20px rgba(139, 92, 246, 0.25)"
+              }}
+            >
+              {isSubmitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="inline-block w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                  Processing...
+                </span>
+              ) : (
+                modalType === "login" ? "Sign In" : "Create Account"
+              )}
+            </button>
+          </form>
 
-          <div>
-            <label className="block text-sm text-foreground/80 mb-1">Password</label>
-            <input
-              name="password"
-              type="password"
-              value={form.password}
-              onChange={handleChange}
-              placeholder="••••••••"
-              className="w-full px-3 py-2 rounded-lg border border-border bg-card1 text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-400"
+          {/* Footer Links */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600 mb-2">
+              {modalType === "login" ? "New to Rajkonna?" : "Already have an account?"}
+            </p>
+            <button
+              onClick={() => handleSwitchLink(modalType === "login" ? "register" : "login")}
+              className="font-bold text-base transition-all duration-200 hover:scale-105"
+              style={{ color: "hsl(359, 55%, 87%)" }}
               disabled={isSubmitting}
-              autoComplete={modalType === "login" ? "current-password" : "new-password"}
-              required
-            />
+            >
+              {modalType === "login" ? "Create an account" : "Sign in"}
+            </button>
           </div>
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full cosmic-button py-2 rounded-full text-sm font-semibold"
-          >
-            {isSubmitting ? "Processing..." : modalType === "login" ? "Sign in" : "Create account"}
-          </button>
-        </form>
-
-        {/* Footer links */}
-        <div className="mt-4 text-center text-sm text-foreground/80">
-          {modalType === "login" ? (
-            <>
-              Don't have an account?{" "}
-              <button
-                onClick={() => handleSwitchLink("register")}
-                className="text-amber-400 hover:text-amber-300 font-medium"
-                disabled={isSubmitting}
-              >
-                Create an account
-              </button>
-            </>
-          ) : (
-            <>
-              Already have an account?{" "}
-              <button
-                onClick={() => handleSwitchLink("login")}
-                className="text-amber-400 hover:text-amber-300 font-medium"
-                disabled={isSubmitting}
-              >
-                Sign in
-              </button>
-            </>
-          )}
         </div>
       </div>
     </div>
