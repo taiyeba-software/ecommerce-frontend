@@ -95,8 +95,25 @@ const Products = () => {
     return name.includes(query) || category.includes(query);
   });
 
+  const baseInputStyle = {
+    width: "100%",
+    padding: "0.6rem 0.75rem",
+    marginTop: "0.5rem",
+    borderRadius: "6px",
+    border: "1px solid #cfcfcf",
+    backgroundColor: "#fff",
+    color: "#1f1f1f",
+  };
+
   return (
-    <div style={{ backgroundColor: "hsl(340, 26%, 70%)", minHeight: "100vh", padding: "2rem" }}>
+    <div
+      style={{
+        backgroundColor: "hsl(340, 26%, 70%)",
+        minHeight: "100vh",
+        padding: "2rem",
+        color: "#1f1f1f",
+      }}
+    >
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
         <div style={{ marginBottom: "2rem" }}>
           <h1
@@ -506,22 +523,38 @@ const Products = () => {
         />
 
         {/* CREATE PRODUCT 🔥 */}
-        <div style={{ background: "#fff", padding: "1rem", borderRadius: "10px", marginBottom: "2rem" }}>
-          <h3>Add New Product</h3>
+        <div
+          style={{
+            background: "#fff",
+            padding: "1rem",
+            borderRadius: "10px",
+            marginBottom: "2rem",
+            color: "#1f1f1f",
+          }}
+        >
+          <h3 style={{ fontWeight: 700 }}>Add New Product</h3>
 
           <input placeholder="Name" value={newProduct.name}
-            onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} />
+            onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+            style={baseInputStyle}
+          />
 
           <input placeholder="Category" value={newProduct.category}
-            onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })} />
+            onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
+            style={baseInputStyle}
+          />
 
           <input type="number" placeholder="Price"
             value={newProduct.price}
-            onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })} />
+            onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+            style={baseInputStyle}
+          />
 
           <input type="number" placeholder="Stock"
             value={newProduct.stock}
-            onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })} />
+            onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
+            style={baseInputStyle}
+          />
 
           <input
             type="file"
@@ -529,6 +562,7 @@ const Products = () => {
               setImageFile(e.target.files[0]);
               setPreview(URL.createObjectURL(e.target.files[0]));
             }}
+            style={{ ...baseInputStyle, padding: "0.4rem 0.5rem" }}
           />
 
           {preview && <img src={preview} style={{ width: "100px", marginTop: "10px" }} />}
@@ -553,30 +587,50 @@ const Products = () => {
             const id = normalizeId(p._id);
 
             return (
-              <div key={id} style={{ background: "#fce4ec", padding: "1rem", borderRadius: "10px" }}>
+              <div
+                key={id}
+                style={{
+                  background: "#fce4ec",
+                  padding: "1rem",
+                  borderRadius: "10px",
+                  color: "#1f1f1f",
+                }}
+              >
                 {editingId === id ? (
                   <>
                     <input value={editData.name}
-                      onChange={(e) => setEditData({ ...editData, name: e.target.value })} />
+                      onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                      style={baseInputStyle}
+                    />
 
                     <input value={editData.category}
-                      onChange={(e) => setEditData({ ...editData, category: e.target.value })} />
+                      onChange={(e) => setEditData({ ...editData, category: e.target.value })}
+                      style={baseInputStyle}
+                    />
 
                     <input value={editData.price}
-                      onChange={(e) => setEditData({ ...editData, price: e.target.value })} />
+                      onChange={(e) => setEditData({ ...editData, price: e.target.value })}
+                      style={baseInputStyle}
+                    />
 
                     <input value={editData.stock}
-                      onChange={(e) => setEditData({ ...editData, stock: e.target.value })} />
+                      onChange={(e) => setEditData({ ...editData, stock: e.target.value })}
+                      style={baseInputStyle}
+                    />
 
                     <input type="file"
                       onChange={(e) => {
                         setImageFile(e.target.files[0]);
                         setPreview(URL.createObjectURL(e.target.files[0]));
-                      }} />
+                      }}
+                      style={{ ...baseInputStyle, padding: "0.4rem 0.5rem" }}
+                    />
 
                     {preview && <img src={preview} style={{ width: "100%" }} />}
 
-                    <button onClick={() => handleSaveEdit(id)}>Save</button>
+                    <button onClick={() => handleSaveEdit(id)} style={{ marginTop: "0.5rem", color: "#1f1f1f" }}>
+                      Save
+                    </button>
                   </>
                 ) : (
                   <>
