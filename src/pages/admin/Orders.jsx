@@ -5,8 +5,7 @@ import api from "@/api/axiosInstance";
 import { isAdminOrSeller } from "../../utils/role";
 
 const Orders = () => {
-  const { user } = useContext(AuthContext);
-  console.log("USER DEBUG:", user);
+  const { user, authLoading } = useContext(AuthContext);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
@@ -27,8 +26,9 @@ const Orders = () => {
   };
 
   useEffect(() => {
+    if (authLoading || !user || !isAdminOrSeller(user)) return;
     fetchOrders();
-  }, []);
+  }, [authLoading, user]);
 
   const fetchOrderDetails = async (id) => {
     if (expandedDetails[id]) return;
@@ -97,8 +97,16 @@ const Orders = () => {
     return statusMap[(status || "").toLowerCase()] || status || "Unknown";
   };
 
+  if (authLoading) {
+    return <p className="p-10" style={{ color: "hsl(0, 0%, 24%)" }}>Loading...</p>;
+  }
+
   if (!user) {
-    return <p className="p-10">Loading...</p>;
+    return (
+      <div className="p-10" style={{ color: "hsl(0, 0%, 24%)" }}>
+        Please log in to access orders management.
+      </div>
+    );
   }
 
   if (!isAdminOrSeller(user)) {

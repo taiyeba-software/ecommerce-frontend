@@ -1,4 +1,3 @@
-/*
 import React, { useContext, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { AuthContext } from "../../context/AuthContext";
@@ -7,38 +6,11 @@ import { normalizeId } from "../../lib/utils";
 import { isAdminOrSeller } from "../../utils/role";
 
 const Products = () => {
-  const { user } = useContext(AuthContext);
-  console.log("USER DEBUG:", user);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState("");
-  const [editingId, setEditingId] = useState(null);
-  const [editData, setEditData] = useState(null);
-
-            <p>Loading products...</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-export default Products;
-*/
-import React, { useContext, useEffect, useState } from "react";
-import toast from "react-hot-toast";
-import { AuthContext } from "../../context/AuthContext";
-import api from "@/api/axiosInstance";
-import { normalizeId } from "../../lib/utils";
-import { isAdminOrSeller } from "../../utils/role";
-
-const Products = () => {
-  const { user } = useContext(AuthContext);
+  const { user, authLoading } = useContext(AuthContext);
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
-
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState(null);
 
@@ -63,22 +35,23 @@ const Products = () => {
     return null;
   };
 
-  // FETCH
   const fetchProducts = async () => {
     try {
       setLoading(true);
       const { data } = await api.get("/products");
       setProducts(data.products || []);
-    } catch {
-      toast.error("Failed to fetch products");
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to fetch products");
+      setProducts([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    if (authLoading || !user || !isAdminOrSeller(user)) return;
     fetchProducts();
-  }, []);
+  }, [authLoading, user]);
 
   const handleCreate = async () => {
     try {
@@ -128,6 +101,7 @@ const Products = () => {
   };
 
   const handleSaveEdit = async (id) => {
+    if (!editData) return;
     try {
       const formData = new FormData();
       formData.append("name", editData.name);
@@ -142,32 +116,41 @@ const Products = () => {
       });
 
       const updated = data.product || data;
-
-      setProducts((prev) =>
-        prev.map((p) => (normalizeId(p._id) === id ? updated : p))
-      );
+      setProducts((prev) => prev.map((p) => (normalizeId(p._id) === id ? updated : p)));
 
       setEditingId(null);
       setEditData(null);
       setImageFile(null);
       setPreview(null);
-
       toast.success("Updated");
     } catch (err) {
       toast.error(err?.response?.data?.message || "Update failed");
     }
   };
 
-  if (!user) return <p className="p-10" style={{ color: "#1f1f1f" }}>Loading...</p>;
-  if (!isAdminOrSeller(user))
+  if (authLoading) {
+    return (
+      <p className="p-10" style={{ color: "#1f1f1f" }}>
+        Loading...
+      </p>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="p-10" style={{ color: "#1f1f1f" }}>
+        Please log in to access product management.
+      </div>
+    );
+  }
+
+  if (!isAdminOrSeller(user)) {
     return <div className="p-10 text-red-500">Access Denied</div>;
+  }
 
   const filteredProducts = products.filter((p) => {
     const q = search.toLowerCase();
-    return (
-      p.name?.toLowerCase().includes(q) ||
-      p.category?.toLowerCase().includes(q)
-    );
+    return p.name?.toLowerCase().includes(q) || p.category?.toLowerCase().includes(q);
   });
 
   const baseInputStyle = {
@@ -180,13 +163,37 @@ const Products = () => {
     color: "#1f1f1f",
   };
 
-  return (
-    <div style={{ backgroundColor: "hsl(340, 26%, 70%)", minHeight: "100vh", padding: "2rem" }}>
-      <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+  const actionButtonBase = {
+    flex: 1,
+    padding: "0.6rem 0.8rem",
+    borderRadius: "8px",
+    border: "1px solid transparent",
+    cursor: "pointer",
+    fontWeight: 600,
+    fontSize: "0.9rem",
+    letterSpacing: "0.2px",
+    transition: "all 0.2s ease",
+    boxShadow: "0 2px 6px rgba(0, 0, 0, 0.08)",
+  };
 
-        <h1 style={{ fontSize: "2.5rem", color: "#333", marginBottom: "1rem" }}>
-          Products Management
-        </h1>
+  const editButtonStyle = {
+    ...actionButtonBase,
+    background: "linear-gradient(135deg, #ffe0b2, #ffcc80)",
+    color: "#4a2c0a",
+    borderColor: "#e6b96b",
+  };
+
+  const deleteButtonStyle = {
+    ...actionButtonBase,
+    background: "linear-gradient(135deg, #ef5350, #d32f2f)",
+    color: "#ffffff",
+    borderColor: "#b71c1c",
+  };
+
+  return (
+    <div style={{ backgroundColor: "hsl(340, 26%, 70%)", minHeight: "100vh", padding: "2rem", color: "#1f1f1f" }}>
+      <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+        <h1 style={{ fontSize: "2.5rem", color: "#333", marginBottom: "1rem" }}>Products Management</h1>
 
         <input
           type="text"
@@ -205,34 +212,34 @@ const Products = () => {
           }}
         />
 
-        <div
-          style={{
-            background: "#fff",
-            padding: "1rem",
-            borderRadius: "10px",
-            marginBottom: "2rem",
-            color: "#1f1f1f",
-          }}
-        >
+        <div style={{ background: "#fff", padding: "1rem", borderRadius: "10px", marginBottom: "2rem", color: "#1f1f1f" }}>
           <h3 style={{ fontWeight: 700 }}>Add New Product</h3>
 
-          <input placeholder="Name" value={newProduct.name}
+          <input
+            placeholder="Name"
+            value={newProduct.name}
             onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
             style={baseInputStyle}
           />
 
-          <input placeholder="Category" value={newProduct.category}
+          <input
+            placeholder="Category"
+            value={newProduct.category}
             onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
             style={baseInputStyle}
           />
 
-          <input type="number" placeholder="Price"
+          <input
+            type="number"
+            placeholder="Price"
             value={newProduct.price}
             onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
             style={baseInputStyle}
           />
 
-          <input type="number" placeholder="Stock"
+          <input
+            type="number"
+            placeholder="Stock"
             value={newProduct.stock}
             onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
             style={baseInputStyle}
@@ -269,38 +276,35 @@ const Products = () => {
             const id = normalizeId(p._id);
 
             return (
-              <div
-                key={id}
-                style={{
-                  background: "#fce4ec",
-                  padding: "1rem",
-                  borderRadius: "10px",
-                  color: "#1f1f1f",
-                }}
-              >
+              <div key={id} style={{ background: "#fce4ec", padding: "1rem", borderRadius: "10px", color: "#1f1f1f" }}>
                 {editingId === id ? (
                   <>
-                    <input value={editData.name}
+                    <input
+                      value={editData.name}
                       onChange={(e) => setEditData({ ...editData, name: e.target.value })}
                       style={baseInputStyle}
                     />
 
-                    <input value={editData.category}
+                    <input
+                      value={editData.category}
                       onChange={(e) => setEditData({ ...editData, category: e.target.value })}
                       style={baseInputStyle}
                     />
 
-                    <input value={editData.price}
+                    <input
+                      value={editData.price}
                       onChange={(e) => setEditData({ ...editData, price: e.target.value })}
                       style={baseInputStyle}
                     />
 
-                    <input value={editData.stock}
+                    <input
+                      value={editData.stock}
                       onChange={(e) => setEditData({ ...editData, stock: e.target.value })}
                       style={baseInputStyle}
                     />
 
-                    <input type="file"
+                    <input
+                      type="file"
                       onChange={(e) => {
                         const file = e.target.files?.[0] || null;
                         setImageFile(file);
@@ -370,6 +374,12 @@ const Products = () => {
             </div>
           )}
         </div>
+
+        {loading && (
+          <div style={{ textAlign: "center", padding: "2rem", color: "#1f1f1f" }}>
+            Loading products...
+          </div>
+        )}
       </div>
     </div>
   );

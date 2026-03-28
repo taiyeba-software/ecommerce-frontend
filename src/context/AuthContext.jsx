@@ -27,6 +27,7 @@ const extractUserFromAuthPayload = (data) => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
   const hydrateFromProfile = async (fallbackUser = null) => {
     try {
@@ -49,15 +50,38 @@ export const AuthProvider = ({ children }) => {
 
   // Example: fetch user info from API or localStorage
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      const parsedUser = normalizeUser(JSON.parse(storedUser));
-      setUser(parsedUser);
-      localStorage.setItem("user", JSON.stringify(parsedUser));
-      if (!parsedUser?.role) {
-        hydrateFromProfile(parsedUser);
+    let mounted = true;
+
+    const initializeAuth = async () => {
+      try {
+        const storedUser = localStorage.getItem("user");
+
+        if (storedUser) {
+          const parsedUser = normalizeUser(JSON.parse(storedUser));
+          if (mounted) {
+            setUser(parsedUser);
+            localStorage.setItem("user", JSON.stringify(parsedUser));
+          }
+          await hydrateFromProfile(parsedUser);
+          return;
+        }
+
+        await hydrateFromProfile();
+      } catch {
+        if (mounted) {
+          setUser(null);
+          localStorage.removeItem("user");
+        }
+      } finally {
+        if (mounted) setAuthLoading(false);
       }
-    }
+    };
+
+    initializeAuth();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const login = async (email, password) => {
@@ -71,8 +95,10 @@ export const AuthProvider = ({ children }) => {
         await hydrateFromProfile(normalizedUser);
       }
       toast.success("Logged in successfully!");
+      return normalizedUser;
     } catch (err) {
       toast.error(err.response?.data?.message || err.message);
+      throw err;
     }
   };
 
@@ -87,8 +113,10 @@ export const AuthProvider = ({ children }) => {
         await hydrateFromProfile(normalizedUser);
       }
       toast.success("Registered successfully!");
+      return normalizedUser;
     } catch (err) {
       toast.error(err.response?.data?.message || err.message);
+      throw err;
     }
   };
 
@@ -104,7 +132,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider
+      value={{ user, authLoading, login, register, logout, refreshAuth: hydrateFromProfile }}
+    >
       {children}
     </AuthContext.Provider>
   );

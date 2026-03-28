@@ -6,13 +6,14 @@ import api from "@/api/axiosInstance";
 import { isAdminOrSeller } from "../../utils/role";
 
 const Dashboard = () => {
-  const { user } = useContext(AuthContext);
-  console.log("USER DEBUG:", user);
+  const { user, authLoading } = useContext(AuthContext);
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (authLoading || !user || !isAdminOrSeller(user)) return;
+
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -34,10 +35,18 @@ const Dashboard = () => {
     };
 
     fetchData();
-  }, []);
+  }, [authLoading, user]);
+
+  if (authLoading) {
+    return <p className="p-10" style={{ color: "hsl(0, 0%, 24%)" }}>Loading...</p>;
+  }
 
   if (!user) {
-    return <p className="p-10">Loading...</p>;
+    return (
+      <div className="p-10" style={{ color: "hsl(0, 0%, 24%)" }}>
+        Please log in to access the admin dashboard.
+      </div>
+    );
   }
 
   if (!isAdminOrSeller(user)) {
