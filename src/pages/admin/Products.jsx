@@ -346,7 +346,6 @@ const Products = () => {
 
 export default Products;
 */
-
 import React, { useContext, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { AuthContext } from "../../context/AuthContext";
@@ -364,6 +363,7 @@ const Products = () => {
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState(null);
 
+  // ✅ NEW PRODUCT STATE
   const [newProduct, setNewProduct] = useState({
     name: "",
     category: "",
@@ -391,7 +391,7 @@ const Products = () => {
     fetchProducts();
   }, []);
 
-  // ================= CREATE PRODUCT =================
+  // ================= CREATE =================
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
     setNewProduct({ ...newProduct, images: files });
@@ -403,6 +403,7 @@ const Products = () => {
   const handleCreate = async () => {
     try {
       const formData = new FormData();
+
       formData.append("name", newProduct.name);
       formData.append("category", newProduct.category);
       formData.append("price", newProduct.price);
@@ -412,23 +413,21 @@ const Products = () => {
         formData.append("images", img);
       });
 
-      const { data } = await api.post("/products", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const { data } = await api.post("/products", formData);
 
       setProducts((prev) => [data.product, ...prev]);
+      toast.success("Product created");
 
-      toast.success("Product created!");
       setNewProduct({ name: "", category: "", price: "", stock: "", images: [] });
       setPreviewImages([]);
-    } catch (err) {
+    } catch {
       toast.error("Create failed");
     }
   };
 
   // ================= DELETE =================
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete product?")) return;
+    if (!window.confirm("Are you sure?")) return;
 
     try {
       await api.delete(`/products/${id}`);
@@ -443,10 +442,10 @@ const Products = () => {
   const handleEdit = (product) => {
     setEditingId(normalizeId(product._id));
     setEditData({
-      name: product.name,
-      category: product.category,
-      price: product.price,
-      stock: product.stock,
+      name: product.name || "",
+      category: product.category || "",
+      price: product.price || 0,
+      stock: product.stock || 0,
       images: [],
     });
   };
@@ -477,92 +476,103 @@ const Products = () => {
 
       setEditingId(null);
       setEditData(null);
-      toast.success("Updated!");
+      toast.success("Updated");
     } catch {
       toast.error("Update failed");
     }
   };
 
-  // ================= UI =================
+  // ================= AUTH =================
   if (!user) return <p className="p-10">Loading...</p>;
-  if (!isAdminOrSeller(user)) return <p className="p-10 text-red-500">Access Denied</p>;
+  if (!isAdminOrSeller(user)) return <div className="p-10 text-red-500">Access Denied</div>;
 
-  const filtered = products.filter((p) =>
-    p.name?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredProducts = products.filter((p) => {
+    const query = search.toLowerCase();
+    return (
+      (p.name || "").toLowerCase().includes(query) ||
+      (p.category || "").toLowerCase().includes(query)
+    );
+  });
 
   return (
-    <div style={{ padding: "2rem", background: "#f7d6df", minHeight: "100vh" }}>
-      <h1 style={{ fontSize: "2rem", marginBottom: "1rem" }}>
-        Product Management
-      </h1>
+    <div style={{ backgroundColor: "hsl(340, 26%, 70%)", minHeight: "100vh", padding: "2rem" }}>
+      <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
 
-      {/* ================= CREATE ================= */}
-      <div style={{ marginBottom: "2rem", background: "#fff", padding: "1rem", borderRadius: "10px" }}>
-        <h3>Create Product</h3>
+        {/* HEADER + SEARCH */}
+        <div style={{ marginBottom: "2rem" }}>
+          <h1 style={{ fontSize: "2.5rem", fontWeight: "bold", marginBottom: "1rem" }}>
+            Products Management
+          </h1>
 
-        <input placeholder="Name" value={newProduct.name}
-          onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} />
-
-        <input placeholder="Category" value={newProduct.category}
-          onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })} />
-
-        <input type="number" placeholder="Price"
-          onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })} />
-
-        <input type="number" placeholder="Stock"
-          onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })} />
-
-        <input type="file" multiple onChange={handleImageChange} />
-
-        {/* Preview */}
-        <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-          {previewImages.map((src, i) => (
-            <img key={i} src={src} width={60} />
-          ))}
+          <input
+            type="text"
+            placeholder="Search..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ padding: "10px", width: "300px", borderRadius: "20px" }}
+          />
         </div>
 
-        <button onClick={handleCreate}>Create</button>
-      </div>
+        {/* CREATE PRODUCT */}
+        <div style={{ marginBottom: "2rem", background: "#fff", padding: "1rem", borderRadius: "10px" }}>
+          <h3>Add Product</h3>
 
-      {/* ================= LIST ================= */}
-      {filtered.map((p) => {
-        const id = normalizeId(p._id);
+          <input placeholder="Name" onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} />
+          <input placeholder="Category" onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })} />
+          <input type="number" placeholder="Price" onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })} />
+          <input type="number" placeholder="Stock" onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })} />
 
-        return (
-          <div key={id} style={{ background: "#fff", marginBottom: "1rem", padding: "1rem", borderRadius: "10px" }}>
-            {editingId === id ? (
-              <>
-                <input value={editData.name}
-                  onChange={(e) => setEditData({ ...editData, name: e.target.value })} />
+          <input type="file" multiple onChange={handleImageChange} />
 
-                <input value={editData.category}
-                  onChange={(e) => setEditData({ ...editData, category: e.target.value })} />
-
-                <input type="file" multiple onChange={handleEditImage} />
-
-                <button onClick={() => handleSaveEdit(id)}>Save</button>
-              </>
-            ) : (
-              <>
-                <h3>{p.name}</h3>
-                <p>{p.category}</p>
-                <p>৳ {p.price}</p>
-
-                {/* Image display */}
-                <div style={{ display: "flex", gap: "10px" }}>
-                  {p.images?.map((img, i) => (
-                    <img key={i} src={img.url} width={60} />
-                  ))}
-                </div>
-
-                <button onClick={() => handleEdit(p)}>Edit</button>
-                <button onClick={() => handleDelete(id)}>Delete</button>
-              </>
-            )}
+          <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+            {previewImages.map((img, i) => (
+              <img key={i} src={img} width={60} />
+            ))}
           </div>
-        );
-      })}
+
+          <button onClick={handleCreate}>Create</button>
+        </div>
+
+        {/* PRODUCTS GRID */}
+        {!loading && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))", gap: "1.5rem" }}>
+            {filteredProducts.map((product) => {
+              const id = normalizeId(product._id);
+
+              return (
+                <div key={id} style={{ background: "#fff", padding: "1rem", borderRadius: "10px" }}>
+                  {editingId === id ? (
+                    <>
+                      <input value={editData.name} onChange={(e) => setEditData({ ...editData, name: e.target.value })} />
+                      <input value={editData.category} onChange={(e) => setEditData({ ...editData, category: e.target.value })} />
+                      <input type="file" multiple onChange={handleEditImage} />
+
+                      <button onClick={() => handleSaveEdit(id)}>Save</button>
+                    </>
+                  ) : (
+                    <>
+                      <h3>{product.name}</h3>
+                      <p>{product.category}</p>
+                      <p>BDT {product.price}</p>
+
+                      <div style={{ display: "flex", gap: "10px" }}>
+                        {product.images?.map((img, i) => (
+                          <img key={i} src={img.url} width={60} />
+                        ))}
+                      </div>
+
+                      <button onClick={() => handleEdit(product)}>Edit</button>
+                      <button onClick={() => handleDelete(id)}>Delete</button>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {loading && <p>Loading...</p>}
+      </div>
     </div>
   );
 };
