@@ -14,21 +14,20 @@ const ProductListing = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isProfileSidebarOpen, setIsProfileSidebarOpen] = useState(false);
 
-  const handleSearch = (e) => {
-    setSearchQuery(e.target.value);
-  };
-
-  // Debounce search to avoid too many API calls
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchProducts({ q: searchQuery });
-    }, 100); // 300ms delay
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+    fetchProducts();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) return <div className="text-center py-10">Loading products...</div>;
   if (error) return <div className="text-center py-10 text-red-500">{error}</div>;
+
+  const filteredProducts = products.filter((p) => {
+    const q = searchQuery.toLowerCase();
+    return (
+      p.name?.toLowerCase().includes(q) ||
+      p.category?.toLowerCase().includes(q)
+    );
+  });
 
   return (
     <>
@@ -52,15 +51,15 @@ const ProductListing = () => {
               type="text"
               placeholder="Search products..."
               value={searchQuery}
-              onChange={handleSearch}
-              className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full max-w-md px-5 py-3 rounded-full border-2 border-gray-300 bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-400 transition"
               autoFocus
             />
           </div>
 
           {/* Product Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {products.map((product) => (
+              {filteredProducts.map((product) => (
                 <ProductCard key={normalizeId(product._id)} product={product} />
               ))}
           </div>
