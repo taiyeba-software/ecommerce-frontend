@@ -359,17 +359,27 @@ const Products = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState(null);
+
+  const [newProduct, setNewProduct] = useState({
+    name: "",
+    category: "",
+    price: "",
+    stock: "",
+  });
+
   const [imageFile, setImageFile] = useState(null);
   const [preview, setPreview] = useState(null);
 
+  // FETCH
   const fetchProducts = async () => {
     try {
       setLoading(true);
       const { data } = await api.get("/products");
       setProducts(data.products || []);
-    } catch (error) {
+    } catch {
       toast.error("Failed to fetch products");
     } finally {
       setLoading(false);
@@ -380,27 +390,47 @@ const Products = () => {
     fetchProducts();
   }, []);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this product?")) return;
-
+  // CREATE PRODUCT 🔥
+  const handleCreate = async () => {
     try {
-      await api.delete(`/products/${id}`);
-      setProducts((prev) => prev.filter((p) => normalizeId(p._id) !== id));
-      toast.success("Deleted");
-    } catch {
-      toast.error("Delete failed");
+      const formData = new FormData();
+      formData.append("name", newProduct.name);
+      formData.append("category", newProduct.category);
+      formData.append("price", newProduct.price);
+      formData.append("stock", newProduct.stock);
+
+      if (imageFile) {
+        formData.append("image", imageFile); // multer field
+      }
+
+      await api.post("/products", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      toast.success("Product created");
+      setNewProduct({ name: "", category: "", price: "", stock: "" });
+      setImageFile(null);
+      setPreview(null);
+      fetchProducts();
+    } catch (err) {
+      toast.error("Create failed");
     }
   };
 
+  // DELETE
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this product?")) return;
+
+    await api.delete(`/products/${id}`);
+    setProducts((prev) => prev.filter((p) => normalizeId(p._id) !== id));
+    toast.success("Deleted");
+  };
+
+  // EDIT
   const handleEdit = (product) => {
     setEditingId(normalizeId(product._id));
-    setEditData({
-      name: product.name,
-      category: product.category,
-      price: product.price,
-      stock: product.stock,
-    });
-    setPreview(product.image || null);
+    setEditData({ ...product });
+    setPreview(product.image);
   };
 
   const handleSaveEdit = async (id) => {
@@ -412,7 +442,7 @@ const Products = () => {
       formData.append("stock", editData.stock);
 
       if (imageFile) {
-        formData.append("image", imageFile); // multer field
+        formData.append("image", imageFile);
       }
 
       const { data } = await api.patch(`/products/${id}`, formData, {
@@ -437,7 +467,8 @@ const Products = () => {
   };
 
   if (!user) return <p className="p-10">Loading...</p>;
-  if (!isAdminOrSeller(user)) return <div className="p-10 text-red-500">Access Denied</div>;
+  if (!isAdminOrSeller(user))
+    return <div className="p-10 text-red-500">Access Denied</div>;
 
   const filteredProducts = products.filter((p) => {
     const q = search.toLowerCase();
@@ -450,142 +481,131 @@ const Products = () => {
   return (
     <div style={{ backgroundColor: "hsl(340, 26%, 70%)", minHeight: "100vh", padding: "2rem" }}>
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-        
-        {/* HEADER */}
-        <div style={{ marginBottom: "2rem" }}>
-          <h1 style={{ fontSize: "2.5rem", fontWeight: "bold", color: "#333" }}>
-            Products Management
-          </h1>
 
-          {/* SEARCH */}
+        {/* HEADER */}
+        <h1 style={{ fontSize: "2.5rem", color: "#333", marginBottom: "1rem" }}>
+          Products Management
+        </h1>
+
+        {/* SEARCH BAR 🔥 */}
+        <input
+          type="text"
+          placeholder="Search products..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{
+            width: "100%",
+            maxWidth: "500px",
+            padding: "0.75rem 1rem",
+            borderRadius: "25px",
+            border: "2px solid #ddd",
+            background: "#fff",
+            color: "#333",
+            marginBottom: "2rem",
+          }}
+        />
+
+        {/* CREATE PRODUCT 🔥 */}
+        <div style={{ background: "#fff", padding: "1rem", borderRadius: "10px", marginBottom: "2rem" }}>
+          <h3>Add New Product</h3>
+
+          <input placeholder="Name" value={newProduct.name}
+            onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} />
+
+          <input placeholder="Category" value={newProduct.category}
+            onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })} />
+
+          <input type="number" placeholder="Price"
+            value={newProduct.price}
+            onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })} />
+
+          <input type="number" placeholder="Stock"
+            value={newProduct.stock}
+            onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })} />
+
           <input
-            type="text"
-            placeholder="Search products..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{
-              width: "100%",
-              maxWidth: "500px",
-              padding: "0.75rem 1rem",
-              borderRadius: "2rem",
-              border: "2px solid #ddd",
-              backgroundColor: "#fff",
-              color: "#333", // ✅ FIXED TEXT COLOR
-              outline: "none",
+            type="file"
+            onChange={(e) => {
+              setImageFile(e.target.files[0]);
+              setPreview(URL.createObjectURL(e.target.files[0]));
             }}
           />
+
+          {preview && <img src={preview} style={{ width: "100px", marginTop: "10px" }} />}
+
+          <button
+            onClick={handleCreate}
+            style={{
+              marginTop: "10px",
+              background: "#4CAF50",
+              color: "white",
+              padding: "10px",
+              borderRadius: "5px",
+            }}
+          >
+            Add Product
+          </button>
         </div>
 
-        {/* GRID */}
-        {!loading && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))", gap: "1.5rem" }}>
-            {filteredProducts.map((product) => {
-              const id = normalizeId(product._id);
+        {/* PRODUCTS GRID */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "1rem" }}>
+          {filteredProducts.map((p) => {
+            const id = normalizeId(p._id);
 
-              return (
-                <div key={id} style={{ background: "#fce4ec", padding: "1.5rem", borderRadius: "10px" }}>
-                  
-                  {editingId === id ? (
-                    <>
-                      <input value={editData.name} onChange={(e) => setEditData({ ...editData, name: e.target.value })} />
-                      <input value={editData.category} onChange={(e) => setEditData({ ...editData, category: e.target.value })} />
-                      <input type="number" value={editData.price} onChange={(e) => setEditData({ ...editData, price: e.target.value })} />
-                      <input type="number" value={editData.stock} onChange={(e) => setEditData({ ...editData, stock: e.target.value })} />
+            return (
+              <div key={id} style={{ background: "#fce4ec", padding: "1rem", borderRadius: "10px" }}>
+                {editingId === id ? (
+                  <>
+                    <input value={editData.name}
+                      onChange={(e) => setEditData({ ...editData, name: e.target.value })} />
 
-                      {/* IMAGE */}
-                      <input
-                        type="file"
-                        onChange={(e) => {
-                          setImageFile(e.target.files[0]);
-                          setPreview(URL.createObjectURL(e.target.files[0]));
-                        }}
+                    <input value={editData.category}
+                      onChange={(e) => setEditData({ ...editData, category: e.target.value })} />
+
+                    <input value={editData.price}
+                      onChange={(e) => setEditData({ ...editData, price: e.target.value })} />
+
+                    <input value={editData.stock}
+                      onChange={(e) => setEditData({ ...editData, stock: e.target.value })} />
+
+                    <input type="file"
+                      onChange={(e) => {
+                        setImageFile(e.target.files[0]);
+                        setPreview(URL.createObjectURL(e.target.files[0]));
+                      }} />
+
+                    {preview && <img src={preview} style={{ width: "100%" }} />}
+
+                    <button onClick={() => handleSaveEdit(id)}>Save</button>
+                  </>
+                ) : (
+                  <>
+                    {p.image && (
+                      <img
+                        src={p.image}
+                        style={{ width: "100%", height: "200px", objectFit: "cover" }}
                       />
+                    )}
 
-                      {preview && (
-                        <img src={preview} alt="preview" style={{ width: "100%", marginTop: "10px" }} />
-                      )}
+                    <h3>{p.name}</h3>
+                    <p>{p.category}</p>
+                    <p>BDT {p.price}</p>
 
-                      <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-                        <button
-                          onClick={() => handleSaveEdit(id)}
-                          style={{
-                            flex: 1,
-                            background: "#4CAF50",
-                            color: "white",
-                            padding: "8px",
-                            borderRadius: "5px",
-                          }}
-                        >
-                          Save
-                        </button>
+                    <div style={{ display: "flex", gap: "10px" }}>
+                      <button onClick={() => handleEdit(p)} style={{ background: "#ffcc80" }}>
+                        Edit
+                      </button>
 
-                        <button
-                          onClick={() => setEditingId(null)}
-                          style={{
-                            flex: 1,
-                            background: "#aaa",
-                            padding: "8px",
-                            borderRadius: "5px",
-                          }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {/* IMAGE */}
-                      {product.image && (
-                        <img
-                          src={product.image}
-                          alt={product.name}
-                          style={{ width: "100%", height: "200px", objectFit: "cover", borderRadius: "8px" }}
-                        />
-                      )}
-
-                      <h2>{product.name}</h2>
-                      <p>{product.category}</p>
-                      <p>BDT {product.price}</p>
-                      <p>Stock: {product.stock}</p>
-
-                      {/* BUTTONS */}
-                      <div style={{ display: "flex", gap: "10px" }}>
-                        <button
-                          onClick={() => handleEdit(product)}
-                          style={{
-                            flex: 1,
-                            background: "#ffcc80",
-                            padding: "8px",
-                            borderRadius: "5px",
-                            fontWeight: "bold",
-                          }}
-                        >
-                          Edit
-                        </button>
-
-                        <button
-                          onClick={() => handleDelete(id)}
-                          style={{
-                            flex: 1,
-                            background: "#e53935",
-                            color: "white",
-                            padding: "8px",
-                            borderRadius: "5px",
-                            fontWeight: "bold",
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {loading && <p>Loading...</p>}
+                      <button onClick={() => handleDelete(id)} style={{ background: "#e53935", color: "white" }}>
+                        Delete
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
