@@ -483,7 +483,7 @@ const Products = () => {
     }
   };
 
-  if (!user) return <p className="p-10">Loading...</p>;
+  if (!user) return <p className="p-10" style={{ color: "#1f1f1f" }}>Loading...</p>;
   if (!isAdminOrSeller(user))
     return <div className="p-10 text-red-500">Access Denied</div>;
 
@@ -494,6 +494,16 @@ const Products = () => {
       p.category?.toLowerCase().includes(q)
     );
   });
+
+  const baseInputStyle = {
+    width: "100%",
+    padding: "0.6rem 0.75rem",
+    marginTop: "0.5rem",
+    borderRadius: "6px",
+    border: "1px solid #cfcfcf",
+    backgroundColor: "#fff",
+    color: "#1f1f1f",
+  };
 
   return (
     <div style={{ backgroundColor: "hsl(340, 26%, 70%)", minHeight: "100vh", padding: "2rem" }}>
@@ -559,8 +569,9 @@ const Products = () => {
           <input
             type="file"
             onChange={(e) => {
-              setImageFile(e.target.files[0]);
-              setPreview(URL.createObjectURL(e.target.files[0]));
+              const file = e.target.files?.[0] || null;
+              setImageFile(file);
+              setPreview(file ? URL.createObjectURL(file) : null);
             }}
             style={{ ...baseInputStyle, padding: "0.4rem 0.5rem" }}
           />
@@ -620,8 +631,9 @@ const Products = () => {
 
                     <input type="file"
                       onChange={(e) => {
-                        setImageFile(e.target.files[0]);
-                        setPreview(URL.createObjectURL(e.target.files[0]));
+                        const file = e.target.files?.[0] || null;
+                        setImageFile(file);
+                        setPreview(file ? URL.createObjectURL(file) : null);
                       }}
                       style={{ ...baseInputStyle, padding: "0.4rem 0.5rem" }}
                     />
@@ -659,6 +671,21 @@ const Products = () => {
               </div>
             );
           })}
+
+          {filteredProducts.length === 0 && !loading && (
+            <div
+              style={{
+                gridColumn: "1 / -1",
+                background: "#fff",
+                color: "#1f1f1f",
+                borderRadius: "10px",
+                padding: "1rem",
+                textAlign: "center",
+              }}
+            >
+              No products found.
+            </div>
+          )}
         </div>
       </div>
     </div>
