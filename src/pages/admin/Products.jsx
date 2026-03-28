@@ -1,3 +1,4 @@
+/*
 import React, { useContext, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { AuthContext } from "../../context/AuthContext";
@@ -339,6 +340,229 @@ const Products = () => {
           </div>
         )}
       </div>
+    </div>
+  );
+};
+
+export default Products;
+*/
+
+import React, { useContext, useEffect, useState } from "react";
+import toast from "react-hot-toast";
+import { AuthContext } from "../../context/AuthContext";
+import api from "@/api/axiosInstance";
+import { normalizeId } from "../../lib/utils";
+import { isAdminOrSeller } from "../../utils/role";
+
+const Products = () => {
+  const { user } = useContext(AuthContext);
+
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const [editingId, setEditingId] = useState(null);
+  const [editData, setEditData] = useState(null);
+
+  const [newProduct, setNewProduct] = useState({
+    name: "",
+    category: "",
+    price: "",
+    stock: "",
+    images: [],
+  });
+
+  const [previewImages, setPreviewImages] = useState([]);
+
+  // ================= FETCH =================
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const { data } = await api.get("/products");
+      setProducts(data.products || []);
+    } catch (error) {
+      toast.error("Failed to fetch products");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  // ================= CREATE PRODUCT =================
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files);
+    setNewProduct({ ...newProduct, images: files });
+
+    const previews = files.map((file) => URL.createObjectURL(file));
+    setPreviewImages(previews);
+  };
+
+  const handleCreate = async () => {
+    try {
+      const formData = new FormData();
+      formData.append("name", newProduct.name);
+      formData.append("category", newProduct.category);
+      formData.append("price", newProduct.price);
+      formData.append("stock", newProduct.stock);
+
+      newProduct.images.forEach((img) => {
+        formData.append("images", img);
+      });
+
+      const { data } = await api.post("/products", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      setProducts((prev) => [data.product, ...prev]);
+
+      toast.success("Product created!");
+      setNewProduct({ name: "", category: "", price: "", stock: "", images: [] });
+      setPreviewImages([]);
+    } catch (err) {
+      toast.error("Create failed");
+    }
+  };
+
+  // ================= DELETE =================
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete product?")) return;
+
+    try {
+      await api.delete(`/products/${id}`);
+      setProducts((prev) => prev.filter((p) => normalizeId(p._id) !== id));
+      toast.success("Deleted");
+    } catch {
+      toast.error("Delete failed");
+    }
+  };
+
+  // ================= EDIT =================
+  const handleEdit = (product) => {
+    setEditingId(normalizeId(product._id));
+    setEditData({
+      name: product.name,
+      category: product.category,
+      price: product.price,
+      stock: product.stock,
+      images: [],
+    });
+  };
+
+  const handleEditImage = (e) => {
+    const files = Array.from(e.target.files);
+    setEditData({ ...editData, images: files });
+  };
+
+  const handleSaveEdit = async (id) => {
+    try {
+      const formData = new FormData();
+
+      formData.append("name", editData.name);
+      formData.append("category", editData.category);
+      formData.append("price", editData.price);
+      formData.append("stock", editData.stock);
+
+      editData.images.forEach((img) => {
+        formData.append("images", img);
+      });
+
+      const { data } = await api.patch(`/products/${id}`, formData);
+
+      setProducts((prev) =>
+        prev.map((p) => (normalizeId(p._id) === id ? data.product : p))
+      );
+
+      setEditingId(null);
+      setEditData(null);
+      toast.success("Updated!");
+    } catch {
+      toast.error("Update failed");
+    }
+  };
+
+  // ================= UI =================
+  if (!user) return <p className="p-10">Loading...</p>;
+  if (!isAdminOrSeller(user)) return <p className="p-10 text-red-500">Access Denied</p>;
+
+  const filtered = products.filter((p) =>
+    p.name?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div style={{ padding: "2rem", background: "#f7d6df", minHeight: "100vh" }}>
+      <h1 style={{ fontSize: "2rem", marginBottom: "1rem" }}>
+        Product Management
+      </h1>
+
+      {/* ================= CREATE ================= */}
+      <div style={{ marginBottom: "2rem", background: "#fff", padding: "1rem", borderRadius: "10px" }}>
+        <h3>Create Product</h3>
+
+        <input placeholder="Name" value={newProduct.name}
+          onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} />
+
+        <input placeholder="Category" value={newProduct.category}
+          onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })} />
+
+        <input type="number" placeholder="Price"
+          onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })} />
+
+        <input type="number" placeholder="Stock"
+          onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })} />
+
+        <input type="file" multiple onChange={handleImageChange} />
+
+        {/* Preview */}
+        <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+          {previewImages.map((src, i) => (
+            <img key={i} src={src} width={60} />
+          ))}
+        </div>
+
+        <button onClick={handleCreate}>Create</button>
+      </div>
+
+      {/* ================= LIST ================= */}
+      {filtered.map((p) => {
+        const id = normalizeId(p._id);
+
+        return (
+          <div key={id} style={{ background: "#fff", marginBottom: "1rem", padding: "1rem", borderRadius: "10px" }}>
+            {editingId === id ? (
+              <>
+                <input value={editData.name}
+                  onChange={(e) => setEditData({ ...editData, name: e.target.value })} />
+
+                <input value={editData.category}
+                  onChange={(e) => setEditData({ ...editData, category: e.target.value })} />
+
+                <input type="file" multiple onChange={handleEditImage} />
+
+                <button onClick={() => handleSaveEdit(id)}>Save</button>
+              </>
+            ) : (
+              <>
+                <h3>{p.name}</h3>
+                <p>{p.category}</p>
+                <p>৳ {p.price}</p>
+
+                {/* Image display */}
+                <div style={{ display: "flex", gap: "10px" }}>
+                  {p.images?.map((img, i) => (
+                    <img key={i} src={img.url} width={60} />
+                  ))}
+                </div>
+
+                <button onClick={() => handleEdit(p)}>Edit</button>
+                <button onClick={() => handleDelete(id)}>Delete</button>
+              </>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 };
