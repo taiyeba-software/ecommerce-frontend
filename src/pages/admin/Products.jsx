@@ -105,6 +105,33 @@ const Products = () => {
     color: "#1f1f1f",
   };
 
+  const actionButtonBase = {
+    flex: 1,
+    padding: "0.6rem 0.8rem",
+    borderRadius: "8px",
+    border: "1px solid transparent",
+    cursor: "pointer",
+    fontWeight: 600,
+    fontSize: "0.9rem",
+    letterSpacing: "0.2px",
+    transition: "all 0.2s ease",
+    boxShadow: "0 2px 6px rgba(0, 0, 0, 0.08)",
+  };
+
+  const editButtonStyle = {
+    ...actionButtonBase,
+    background: "linear-gradient(135deg, #ffe0b2, #ffcc80)",
+    color: "#4a2c0a",
+    borderColor: "#e6b96b",
+  };
+
+  const deleteButtonStyle = {
+    ...actionButtonBase,
+    background: "linear-gradient(135deg, #ef5350, #d32f2f)",
+    color: "#ffffff",
+    borderColor: "#b71c1c",
+  };
+
   return (
     <div
       style={{
@@ -417,7 +444,7 @@ const Products = () => {
       formData.append("stock", newProduct.stock);
 
       if (imageFile) {
-        formData.append("image", imageFile); // multer field
+        formData.append("images", imageFile); // must match backend multer field
       }
 
       await api.post("/products", formData, {
@@ -459,7 +486,7 @@ const Products = () => {
       formData.append("stock", editData.stock);
 
       if (imageFile) {
-        formData.append("image", imageFile);
+        formData.append("images", imageFile);
       }
 
       const { data } = await api.patch(`/products/${id}`, formData, {
@@ -658,11 +685,11 @@ const Products = () => {
                     <p>BDT {p.price}</p>
 
                     <div style={{ display: "flex", gap: "10px" }}>
-                      <button onClick={() => handleEdit(p)} style={{ background: "#ffcc80" }}>
+                      <button onClick={() => handleEdit(p)} style={editButtonStyle}>
                         Edit
                       </button>
 
-                      <button onClick={() => handleDelete(id)} style={{ background: "#e53935", color: "white" }}>
+                      <button onClick={() => handleDelete(id)} style={deleteButtonStyle}>
                         Delete
                       </button>
                     </div>
