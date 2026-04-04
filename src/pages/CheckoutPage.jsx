@@ -165,10 +165,11 @@ const CheckoutPage = () => {
                       value={form.name}
                       onChange={handleInputChange}
                       placeholder="John Doe"
-                      className="w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none"
+                      className="w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 focus:ring-pink-300 text-black placeholder:text-gray-500"
                       style={{
                         borderColor: "hsl(var(--border))",
-                        backgroundColor: "hsl(var(--card2))"
+                        backgroundColor: "#ffffff",
+                        color: "#111111",
                       }}
                       required
                     />
@@ -183,10 +184,11 @@ const CheckoutPage = () => {
                       value={form.email}
                       onChange={handleInputChange}
                       placeholder="you@example.com"
-                      className="w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none"
+                      className="w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 focus:ring-pink-300 text-black placeholder:text-gray-500"
                       style={{
                         borderColor: "hsl(var(--border))",
-                        backgroundColor: "hsl(var(--card2))"
+                        backgroundColor: "#ffffff",
+                        color: "#111111",
                       }}
                       required
                     />
@@ -201,10 +203,11 @@ const CheckoutPage = () => {
                       value={form.phone}
                       onChange={handleInputChange}
                       placeholder="+1 (555) 000-0000"
-                      className="w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none"
+                      className="w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 focus:ring-pink-300 text-black placeholder:text-gray-500"
                       style={{
                         borderColor: "hsl(var(--border))",
-                        backgroundColor: "hsl(var(--card2))"
+                        backgroundColor: "#ffffff",
+                        color: "#111111",
                       }}
                       required
                     />
@@ -219,10 +222,11 @@ const CheckoutPage = () => {
                       onChange={handleInputChange}
                       placeholder="123 Main Street, Apt 4B..."
                       rows="3"
-                      className="w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none resize-none"
+                      className="w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 focus:ring-pink-300 resize-none text-black placeholder:text-gray-500"
                       style={{
                         borderColor: "hsl(var(--border))",
-                        backgroundColor: "hsl(var(--card2))"
+                        backgroundColor: "#ffffff",
+                        color: "#111111",
                       }}
                       required
                     />
