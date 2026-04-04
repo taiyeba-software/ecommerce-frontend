@@ -280,9 +280,9 @@ const CheckoutPage = () => {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-4 rounded-full font-bold text-white text-lg transition-all hover:scale-105 active:scale-95 disabled:opacity-70"
+                className="w-full py-4 rounded-full font-extrabold text-white text-lg tracking-wide uppercase transition-all hover:scale-105 active:scale-95 disabled:opacity-70 border border-white/20 shadow-[0_12px_30px_rgba(204,51,102,0.35)] hover:shadow-[0_16px_40px_rgba(204,51,102,0.45)]"
                 style={{
-                  backgroundColor: "hsl(var(--accent))",
+                  background: "linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(340, 70%, 45%) 100%)",
                 }}
               >
                 {submitting ? (
