@@ -41,21 +41,44 @@ export const ProductProvider = ({ children }) => {
 
   // 🟢 Add to Cart
   const addToCart = async (product, user) => {
-    if (!user) {
-      toast.error("You must be logged in to add products to cart!");
-      return;
-    }
+    const productId = normalizeId(product._id || product);
+    const productName = typeof product === 'object' ? product.name : 'Item';
 
-    try {
-      const { data } = await api.post("/cart/items", { 
-        productId: normalizeId(product._id || product), 
-        qty: 1 
-      });
-      toast.success(`${product.name} added to cart!`);
-      return data;
-    } catch (err) {
-      console.error("addToCart error:", err);
-      toast.error(err.response?.data?.message || "Network error, please try again.");
+    if (user) {
+      // 🟢 AUTHENTICATED: Call API
+      try {
+        const { data } = await api.post("/cart/items", { 
+          productId, 
+          qty: 1 
+        });
+        toast.success(`${productName} added to cart!`);
+        return data;
+      } catch (err) {
+        console.error("addToCart error:", err);
+        toast.error(err.response?.data?.message || "Network error, please try again.");
+      }
+    } else {
+      // 🟢 GUEST: Store in localStorage
+      try {
+        const guestCartData = localStorage.getItem("guestCart") || JSON.stringify({ items: [] });
+        const guestCart = JSON.parse(guestCartData);
+        
+        const existingItem = guestCart.items.find(
+          item => normalizeId(item.productId) === productId
+        );
+        
+        if (existingItem) {
+          existingItem.qty += 1;
+        } else {
+          guestCart.items.push({ productId, qty: 1 });
+        }
+        
+        localStorage.setItem("guestCart", JSON.stringify(guestCart));
+        toast.success(`${productName} added to cart!`);
+      } catch (err) {
+        console.error("addToGuestCart error:", err);
+        toast.error("Failed to add to cart");
+      }
     }
   };
 
@@ -152,11 +175,25 @@ export const ProductProvider = ({ children }) => {
     }
 
     try {
-      await api.patch(`/cart/items/${productId}`, { quantity: newQty });
+      await api.patch(`/cart/items/${productId}`, { qty: newQty });
       toast.success("Quantity updated!");
     } catch (err) {
       console.error("updateCartItemQuantity error:", err);
       toast.error(err.response?.data?.message || "Network error, please try again.");
+    }
+  };
+
+  // 🟢 Fetch cart (global - can be used anywhere)
+  const fetchCart = async (discountParam = "") => {
+    try {
+      const url = discountParam ? `/cart?discount=${encodeURIComponent(discountParam)}` : "/cart";
+      const { data } = await api.get(url);
+      setCart(data);
+      return data;
+    } catch (error) {
+      console.error("fetchCart error:", error);
+      toast.error("Failed to load cart");
+      return null;
     }
   };
 
@@ -169,6 +206,7 @@ export const ProductProvider = ({ children }) => {
         error,
         fetchProducts,
         fetchProductById,
+        fetchCart,
         addToCart,
         addProduct,
         editProduct,

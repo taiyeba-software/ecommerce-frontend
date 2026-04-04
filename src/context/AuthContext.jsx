@@ -29,6 +29,28 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
 
+  // 🔴 Sync guest cart to authenticated user
+  const syncGuestCart = async () => {
+    try {
+      const guestCartData = localStorage.getItem("guestCart");
+      if (!guestCartData) return;
+      
+      const guestCart = JSON.parse(guestCartData);
+      if (!guestCart.items || guestCart.items.length === 0) {
+        localStorage.removeItem("guestCart");
+        return;
+      }
+      
+      await api.post("/cart/sync", {
+        items: guestCart.items
+      });
+      
+      localStorage.removeItem("guestCart");
+    } catch (err) {
+      console.error("syncGuestCart error:", err);
+    }
+  };
+
   const hydrateFromProfile = async (fallbackUser = null) => {
     try {
       const { data } = await api.get("/auth/profile");
@@ -94,6 +116,7 @@ export const AuthProvider = ({ children }) => {
       } else {
         await hydrateFromProfile(normalizedUser);
       }
+      await syncGuestCart();
       toast.success("Logged in successfully!");
       return normalizedUser;
     } catch (err) {
@@ -112,6 +135,7 @@ export const AuthProvider = ({ children }) => {
       } else {
         await hydrateFromProfile(normalizedUser);
       }
+      await syncGuestCart();
       toast.success("Registered successfully!");
       return normalizedUser;
     } catch (err) {

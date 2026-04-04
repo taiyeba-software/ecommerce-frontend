@@ -4,41 +4,41 @@ import { useProducts } from "../context/useProducts";
 import { normalizeId } from "../lib/utils";
 import toast from "react-hot-toast";
 import ProfileSidebar from "../components/ProfileSidebar";
-import api from "@/api/axiosInstance";
 
 const CartPage = () => {
   const { user } = useAuth();
-  const { removeItemFromCart, clearCart, updateCartItemQuantity } = useProducts();
-  const [cart, setCart] = useState(null);
+  const { removeItemFromCart, clearCart, updateCartItemQuantity, fetchCart } = useProducts();
+  const [localCart, setLocalCart] = useState(null);
   const [loading, setLoading] = useState(true);
   const [removingItems, setRemovingItems] = useState(new Set());
   const [updatingQuantities, setUpdatingQuantities] = useState(new Set());
   const [isProfileSidebarOpen, setIsProfileSidebarOpen] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
-
-  const fetchCart = async () => {
-    setLoading(true);
-    try {
-      const { data } = await api.get("/cart");
-      setCart(data);
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to load cart");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [discount, setDiscount] = useState("");
+  const [applyingDiscount, setApplyingDiscount] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
-    fetchCart();
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    handleFetchCart();
   }, [user]);
+
+  const handleFetchCart = async () => {
+    setLoading(true);
+    const data = await fetchCart();
+    if (data) {
+      setLocalCart(data);
+    }
+    setLoading(false);
+  };
 
   const handleRemoveItem = async (productId) => {
     setRemovingItems(prev => new Set(prev).add(productId));
     try {
       await removeItemFromCart(productId, user);
-      await fetchCart(); // Refresh cart data
+      await handleFetchCart(); // Refresh cart data
     } catch {
       // Error already handled in removeItemFromCart
     } finally {
@@ -53,7 +53,7 @@ const CartPage = () => {
   const handleClearCart = async () => {
     try {
       await clearCart(user);
-      await fetchCart(); // Refresh cart data
+      await handleFetchCart(); // Refresh cart data
     } catch {
       // Error already handled in clearCart
     }
@@ -63,7 +63,7 @@ const CartPage = () => {
     setUpdatingQuantities(prev => new Set(prev).add(productId));
     try {
       await updateCartItemQuantity(productId, newQty, user);
-      await fetchCart(); // Refresh cart data
+      await handleFetchCart(); // Refresh cart data
     } catch {
       // Error already handled in updateCartItemQuantity
     } finally {
@@ -84,7 +84,7 @@ const CartPage = () => {
       toast.success("Order placed successfully!");
 
       // ✅ 2. Clear cart visually
-      setCart({ items: [] });
+      setLocalCart({ items: [] });
 
     } catch (error) {
       toast.error(
@@ -95,18 +95,42 @@ const CartPage = () => {
     }
   };
 
+  // 🔴 Apply discount code and refetch cart
+  const handleApplyDiscount = async () => {
+    if (!discount.trim()) {
+      toast.error("Please enter a discount code or value");
+      return;
+    }
+
+    setApplyingDiscount(true);
+    try {
+      const data = await fetchCart(discount);
+      if (data) {
+        setLocalCart(data);
+      }
+      toast.success("Discount applied!");
+      setDiscount(""); // Clear input
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Failed to apply discount"
+      );
+    } finally {
+      setApplyingDiscount(false);
+    }
+  };
+
   if (!user) {
     return <p className="p-4 text-center text-red-500">Please log in to view your cart.</p>;
   }
   if (loading) {
     return <p className="p-4 text-center">Loading cart...</p>;
   }
-  if (!cart || cart.items.length === 0) {
+  if (!localCart || localCart.items.length === 0) {
     return <p className="p-4 text-center">Your cart is empty.</p>;
   }
 
   // Destructure totals from cart data
-  const { items, subtotal, deliveryCharge, discountPercent, discountAmount, totalPayable } = cart;
+  const { items, subtotal, deliveryCharge, discountPercent, discountAmount, totalPayable, warnings } = localCart;
 
   const colorPalette = [];
 
@@ -114,6 +138,23 @@ const CartPage = () => {
     <>
       <div className="min-h-screen bg-background text-black p-6 mx-10%">
           <h1 className="text-3xl font-bold mb-6">Your Cart</h1>
+
+          {/* 🔴 Warnings UI */}
+          {warnings && warnings.length > 0 && (
+            <div className="mb-6 p-4 border-l-4 border-yellow-400 bg-yellow-50 rounded">
+              <div className="flex gap-3">
+                <span className="text-lg">⚠️</span>
+                <div>
+                  <p className="font-semibold text-yellow-900 mb-2">Cart Issues</p>
+                  <ul className="text-sm text-yellow-800 space-y-1">
+                    {warnings.map((warning, idx) => (
+                      <li key={idx}>• {warning}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* List of items */}
           <div className="space-y-4">
@@ -177,8 +218,31 @@ const CartPage = () => {
             <p>Subtotal: ৳{subtotal}</p>
             <p>Delivery Charge: ৳{deliveryCharge}</p>
             <p>Discount: {discountPercent}% (৳{discountAmount})</p>
+
+            {/* 🔴 DISCOUNT CODE INPUT */}
+            <div className="mt-4 pt-4 border-t">
+              <label className="block text-sm font-semibold mb-2 text-gray-800">Apply Discount (Optional)</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={discount}
+                  onChange={(e) => setDiscount(e.target.value)}
+                  placeholder="Enter discount code or %"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded text-black bg-white"
+                  disabled={applyingDiscount}
+                />
+                <button
+                  onClick={handleApplyDiscount}
+                  disabled={applyingDiscount || !discount.trim()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap"
+                >
+                  {applyingDiscount ? "Applying..." : "Apply"}
+                </button>
+              </div>
+            </div>
+
             <hr className="my-2"/>
-            <p className="text-lg font-bold">Total: ৳{totalPayable}</p>
+            <p className="text-lg font-bold text-gray-900">Total: ৳{totalPayable}</p>
             <div className="mt-4 flex justify-end">
               <button
                 onClick={handleClearCart}

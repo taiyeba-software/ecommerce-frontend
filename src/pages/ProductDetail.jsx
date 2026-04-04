@@ -36,7 +36,7 @@ const ProductDetail = () => {
   }, [id, fetchProductById]);
 
   const handleAddToCart = () => {
-    addToCart(product, user); // only allows logged-in users
+    addToCart(product, user); // Supports both guest and logged-in users
   };
 
   if (loading) return <p className="text-center mt-10">Loading...</p>;

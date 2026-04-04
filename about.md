@@ -1,303 +1,132 @@
-# ABOUT - Rajkonna Frontend
+# ABOUT - Rajkonna Frontend (Interview Guide)
 
-This document is an interview-ready walkthrough of the Rajkonna frontend project.
-It explains the real React architecture, how UI events become API calls, and how to answer common frontend interview questions clearly.
+This document explains the real architecture used in this frontend codebase, with focus on:
+- global state + routing
+- role fetching and role-based behavior
+- backend API fetching techniques
 
----
+## 1) Elevator Pitch (30-45 seconds)
 
-## 1) 30-Second Version (Most Important)
+Rajkonna frontend is a React 19 + Vite 7 e-commerce app. The app uses a provider-first architecture: `AuthProvider`, `ModalProvider`, and `ProductProvider` wrap `App` in `main.jsx`, and `App` contains `BrowserRouter`. That means every route can consume shared auth/product/modal state. API calls are centralized with one Axios instance (`baseURL: "/api"`, `withCredentials: true`), and Vercel rewrites `/api/*` to the deployed backend.
 
-Rajkonna frontend is a React 19 + Vite 7 e-commerce storefront for skincare products. It uses Context API for app-wide state (auth, products, modal), React Router for page navigation, Tailwind CSS for styling, and GSAP/React Spring for motion. The API layer is centralized through Axios (`/api` base path), then Vercel rewrites forward calls to the backend service. The app supports login/register, product browsing with search, product details, cart management, checkout (COD), profile editing, and an admin orders dashboard.
+## 2) Architecture in One Flow
 
----
+User Action -> Page/Component -> Context action or page API call -> Axios client -> `/api/*` -> backend response -> state/toast update -> rerender.
 
-## 2) 1-2 Minute Technical Explanation
+### Layer responsibilities
 
-The app starts from `src/main.jsx`, where `App` is wrapped with:
-- `AuthProvider`
-- `ModalProvider`
-- `ProductProvider`
-- global `Toaster` for notifications
+- UI layer: pages/components render and capture events.
+- Context layer: shared state + reusable domain actions.
+- API client layer: common transport config and error interception.
+- Router layer: route mapping for public, cart, and admin pages.
 
-Routing is configured in `src/App.jsx`:
-- `/` home page
-- `/products` listing
-- `/products/:id` details
-- `/cart` cart page
-- `/admin` admin orders dashboard
-- `*` not-found fallback
+## 3) Global State + Routing (Strong Interview Point)
 
-The main data flow is:
-UI component -> Context action -> Axios client -> `/api/*` -> backend response -> UI update/toast.
+The app mounts providers before the router:
 
-`src/api/axiosInstance.js` sets `baseURL: "/api"`. In production, `vercel.json` rewrites:
-- `/api/(.*)` -> `https://ecommerce-backend-api-wyxt.onrender.com/api/$1`
-- all other routes -> `/` (SPA fallback)
+- `AuthProvider`: authenticated user, auth loading, login/register/logout
+- `ModalProvider`: global login/register modal visibility and type
+- `ProductProvider`: products, cart actions, admin product actions
 
-Auth logic lives in `src/context/AuthContext.jsx` (login/register/logout + localStorage persistence). Product and cart logic lives in `src/context/ProductProvider.jsx` (fetch products, product CRUD, cart item updates). Components/pages call these actions and render loading/error states.
+Then `App` defines routes inside `BrowserRouter`:
 
----
+- `/`
+- `/products`
+- `/products/:id`
+- `/cart`
+- `/login` (opens modal then redirects home)
+- `/admin`
+- `/admin/products`
+- `/admin/orders`
+- `*` fallback
 
-## 3) Deep Dive (Only If They Ask)
+Because providers are above router, any route component can access global auth/product state without prop drilling.
 
-### 3.1 Architecture and Request Lifecycle
+## 4) Role Fetching and Role-Based Reaction
 
-Request lifecycle from a user action:
-1. User clicks in the UI (for example, Add to Cart).
-2. Component calls a Context method (`addToCart`, `login`, `fetchProducts`, etc.).
-3. Context method calls Axios endpoint (`/api/...`).
-4. Backend returns JSON.
-5. Context/page updates state and shows toast feedback.
-6. React re-renders affected UI.
+### How role is fetched
 
-Core architecture pattern:
-- Pages/components: rendering and user interaction
-- Contexts: shared app state + business actions
-- Axios client: HTTP abstraction
-- Backend API: source of truth for products/cart/orders/profile
+`AuthContext` normalizes user role from multiple payload shapes:
 
-### 3.2 Authentication Deep Dive
+- supports `user.role`
+- supports fallback `isAdmin === true` -> role becomes `"admin"`
+- trims/lowercases role for consistency
 
-Primary file: `src/context/AuthContext.jsx`
+On app startup:
 
-- Register:
-	- `POST /api/auth/register`
-	- normalizes returned user role (`isAdmin -> role: admin`)
-	- stores user in localStorage and context state
+1. Try localStorage user.
+2. If present, normalize and set fast (for immediate UI).
+3. Re-validate from backend using `GET /auth/profile`.
+4. Keep `authLoading` until hydration finishes.
 
-- Login:
-	- `POST /api/auth/login`
-	- same normalization and persistence flow
+This pattern gives fast initial rendering with backend-verified role refresh.
 
-- Logout:
-	- `POST /api/auth/logout`
-	- clears context user and localStorage
+### How UI reacts to role
 
-UI entry point:
-- `src/components/modals/AuthModal.jsx` handles login/register form UX and validation
+Role gating is implemented in both domain actions and route pages:
 
-### 3.3 Product Discovery Flow Deep Dive
+- Domain guard in `ProductProvider`: add/edit/delete product checks `isAdminOrSeller(user)`.
+- Page guard in admin routes (`/admin`, `/admin/products`, `/admin/orders`):
+  - if `authLoading`: show loading
+  - if no user: ask to log in
+  - if not admin/seller: show access denied
+  - else load admin data
+- Component-level gating in `ProductCard`: show delete button only for admin/seller.
 
-Key files:
-- `src/pages/ProductListing.jsx`
-- `src/components/ProductCard.jsx`
-- `src/context/ProductProvider.jsx`
+Important interview note: this frontend uses soft guards (UI gating). Final authorization is still enforced by backend APIs.
 
-Behavior:
-- Search input updates `searchQuery`
-- Debounced effect calls `fetchProducts({ q })`
-- `fetchProducts` calls `GET /api/products`
-- Results render in responsive grid cards
+## 5) Backend Fetching API Techniques Used
 
-Product details:
-- `src/pages/ProductDetail.jsx` loads `GET /api/products/:id`
-- Add to Cart button calls shared `addToCart`
+## 5.1 Centralized Axios client
 
-### 3.4 Cart Flow Deep Dive
+- single instance in `src/api/axiosInstance.js`
+- `baseURL: "/api"`
+- `withCredentials: true` for cookie/session auth
+- response interceptor handles `401`
+  - if session exists in localStorage and request is not auth bootstrap route
+  - clear local user
+  - redirect to `/login`
 
-Key files:
-- `src/pages/CartPage.jsx`
-- `src/context/ProductProvider.jsx`
+This keeps auth failure behavior consistent across the app.
 
-Cart operations:
-- Load cart: `GET /api/cart`
-- Add item: `POST /api/cart/items`
-- Update qty: `PUT /api/cart/items/:productId`
-- Remove item: `DELETE /api/cart/items/:productId`
-- Clear cart: `DELETE /api/cart`
+## 5.2 Environment and deployment transport
 
-Checkout:
-- `POST /api/orders` with `{ paymentMethod: "COD" }`
-- Success toast shown and cart UI cleared locally
+- Production uses Vercel rewrite:
+  - `/api/(.*)` -> Render backend `/api/$1`
+  - `/(.*)` -> `/` for SPA fallback
+- Frontend code always calls relative `/api/...`, so deployment target is abstracted.
 
-### 3.5 Admin Flow Deep Dive
+## 5.3 Data-fetch patterns in features
 
-Order admin dashboard (`src/pages/AdminDashboard.jsx`):
-- List orders: `GET /api/orders?page=&limit=10`
-- View single order: `GET /api/orders/:orderId`
-- Delete order: `DELETE /api/orders/:orderId`
-
-Product admin actions in context:
-- Add: `POST /api/products`
-- Edit: `PUT /api/products/:id`
-- Delete: `DELETE /api/products/:id`
-
-### 3.6 Profile Sidebar Flow
-
-Key file: `src/components/ProfileSidebar.jsx`
-
-- Fetch user profile on open: `GET /api/auth/profile`
-- Save profile edits: `PUT /api/auth/profile`
-- Includes phone and structured address fields
-
-### 3.7 Motion and UX Layer
-
-Motion stack used in UI:
-- GSAP (`@gsap/react`) for nav/sidebar/table interactions
-- React Spring for scroll/parallax patterns
-- Tailwind animations and custom keyframes in `src/index.css`
-
-This gives the project stronger visual identity beyond a plain CRUD interface.
-
----
-
-## Folder and File Guide (Frontend)
-
-## Root
-
-- `index.html`
-	- Vite HTML entry with `#root` mount.
-
-- `package.json`
-	- Scripts and dependencies (React 19, Vite 7, Router 7, Tailwind 4, Axios, GSAP, etc.).
-
-- `vite.config.js`
-	- React and Tailwind Vite plugins + `@` alias to `src`.
-
-- `vercel.json`
-	- Rewrites API calls to backend and supports SPA route fallback.
-
-- `eslint.config.js`
-	- Lint rules for JS/React hooks/react refresh.
-
-- `README.md`
-	- Project overview and setup notes.
-
-- `about.md`
-	- This interview guide.
-
-## public
-
-- `assets/audio/*`
-	- Background audio for UI effects.
-
-- `assets/videos/*`
-	- Hero video assets.
-
-- `assets/fonts/*`
-	- Custom font files used in global CSS.
-
-- `images/*`
-	- Branding and section imagery.
-
-## src
-
-### Core
-
-- `main.jsx`
-	- Bootstraps app with providers and toaster.
-
-- `App.jsx`
-	- Route definitions and global auth modal mount.
-
-- `index.css`
-	- Theme variables, font-face setup, shared utility styles, animations.
-
-### API
-
-- `api/axiosInstance.js`
-	- Shared Axios client (`baseURL: "/api"`).
-
-### Context
-
-- `context/AuthContext.jsx`
-	- User session state and auth actions.
-
-- `context/ModalContext.jsx`
-	- Global auth modal state.
-
-- `context/ProductContext.jsx`
-	- Context object definition for product/cart domain.
-
-- `context/ProductProvider.jsx`
-	- Products + cart + admin product operations.
-
-- `context/useProducts.js`
-	- Hook wrapper for product context.
-
-### Pages
-
-- `pages/Home.jsx`
-	- Composes landing sections (hero/about/products/contact/footer).
-
-- `pages/ProductListing.jsx`
-	- Product list with live search.
-
-- `pages/ProductDetail.jsx`
-	- Single product view + add to cart.
-
-- `pages/CartPage.jsx`
-	- Cart operations, totals display, checkout action.
-
-- `pages/AdminDashboard.jsx`
-	- Admin orders management with details + deletion.
-
-- `pages/AddProduct.jsx`
-	- Admin add product form (currently not routed in `App.jsx`).
-
-- `pages/EditProduct.jsx`
-	- Admin edit product form (currently not routed in `App.jsx`).
-
-- `pages/NotFound.jsx`
-	- Fallback route page.
-
-### Components
-
-- `components/Navbar.jsx`
-	- Navigation, auth actions, cart link, mobile menu, profile sidebar trigger.
-
-- `components/modals/AuthModal.jsx`
-	- Login/register modal controlled by `ModalContext`.
-
-- `components/ProfileSidebar.jsx`
-	- Profile read/update panel.
-
-- `components/ProductCard.jsx`
-	- Reusable product card with add-to-cart and admin delete button.
-
-- `components/Hero.jsx`, `HeroSection.jsx`, `VideoPinSection.jsx`, `StarBackground.jsx`
-	- Hero visuals and animated presentation.
-
-- `components/AboutSection.jsx`, `Product.jsx`, `Facewash.jsx`, `Moisture.jsx`, `Contact.jsx`, `RajkonnaFooter.jsx`, `AudioToggle.jsx`
-	- Brand storytelling and section-level UI blocks.
-
-### Utility and Data
-
-- `lib/utils.jsx`
-	- `cn(...)` class merge helper + `normalizeId(...)` id normalizer.
-
-- `data/products.json`
-	- Static product reference data.
-
----
-
-## Interview Q&A Bank
-
-### Q: How does data flow in this frontend?
-
-Short answer:
-- Component -> Context action -> Axios -> backend -> state update -> re-render.
-
-Long answer:
-- Components remain mostly presentation/event layers.
-- Context providers hold shared state and reusable async actions.
-- A shared Axios client keeps network calls consistent.
-- Toasts and loading flags provide user feedback.
-
-### Q: How is authentication handled on frontend?
-
-Short answer:
-- Auth modal calls login/register actions from `AuthContext`; user state is persisted in localStorage and reused on refresh.
-
-Long answer:
-- `AuthContext` exposes `login`, `register`, `logout`.
-- Successful auth responses are normalized and stored in both state and localStorage.
-- UI conditionally renders auth buttons/profile options using `user` state.
-
-### Q: How do product and cart features work?
-
-- Product list and detail pages call `ProductProvider` methods.
-- Cart page fetches latest cart totals from backend and provides update/remove/clear operations.
+- Product list: `GET /products`
+- Product detail: `GET /products/:id` using `useParams`
+- Cart:
+  - `GET /cart`
+  - `POST /cart/items`
+  - `PATCH /cart/items/:productId`
+  - `DELETE /cart/items/:productId`
+  - `DELETE /cart`
+- Orders:
+  - `POST /orders` for checkout
+  - admin list/details/delete from `/orders` endpoints
+- Auth:
+  - `POST /auth/login`
+  - `POST /auth/register`
+  - `POST /auth/logout`
+  - `GET /auth/profile`
+
+## 5.4 Reliability patterns used
+
+- loading and error states before/after calls
+- toast feedback for success/failure
+- guarded fetches (`if authLoading || !user || !isAdminOrSeller(user) return`)
+- `Promise.all` used in admin dashboard to fetch products + orders together
+- `FormData` + multipart headers for product image create/edit
+- normalized ID utility to handle mixed ID formats
+
+## 6) Suggested Interview Answer (1 minute)
+
+This project uses provider-first architecture with routing. In `main.jsx`, Auth, Modal, and Product providers wrap the app, and inside `App.jsx` we use `BrowserRouter` and route mapping. That gives every route shared access to auth and product state through context hooks, so there is no prop drilling. Role is normalized in `AuthContext` from either `role` or `isAdmin`, then revalidated with `/auth/profile` on startup. UI reacts to role in two places: admin pages are guarded and product admin actions are blocked unless `isAdminOrSeller` is true. API communication is centralized via one Axios instance using `/api` and `withCredentials`, with a 401 interceptor to clear stale sessions and redirect to login. In production, Vercel rewrites `/api/*` to backend, so frontend endpoints stay clean and consistent.
 - Checkout currently posts a COD order request and gives immediate feedback.
 
 ### Q: How does API routing work in production?
