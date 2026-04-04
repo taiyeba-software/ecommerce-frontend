@@ -1,24 +1,102 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useProducts } from "../context/useProducts";
+import { ModalContext } from "../context/ModalContext";
 import { normalizeId } from "../lib/utils";
 import toast from "react-hot-toast";
 import ProfileSidebar from "../components/ProfileSidebar";
 
 const CartPage = () => {
+  const navigate = useNavigate();
+  const { openModal } = useContext(ModalContext);
   const { user } = useAuth();
-  const { removeItemFromCart, clearCart, updateCartItemQuantity, fetchCart } = useProducts();
+  const { removeItemFromCart, clearCart, updateCartItemQuantity, fetchCart, fetchProductById } = useProducts();
   const [localCart, setLocalCart] = useState(null);
   const [loading, setLoading] = useState(true);
   const [removingItems, setRemovingItems] = useState(new Set());
   const [updatingQuantities, setUpdatingQuantities] = useState(new Set());
   const [isProfileSidebarOpen, setIsProfileSidebarOpen] = useState(false);
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [discount, setDiscount] = useState("");
   const [applyingDiscount, setApplyingDiscount] = useState(false);
 
+  const buildGuestCartView = async () => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem("guestCart") || '{"items":[]}');
+      const guestItems = Array.isArray(parsed?.items) ? parsed.items : [];
+
+      if (guestItems.length === 0) {
+        setLocalCart({
+          items: [],
+          subtotal: 0,
+          deliveryCharge: 0,
+          discountPercent: 0,
+          discountAmount: 0,
+          totalPayable: 0,
+          warnings: [],
+        });
+        return;
+      }
+
+      const warnings = [];
+      const hydrated = await Promise.all(
+        guestItems.map(async (item) => {
+          try {
+            const product = await fetchProductById(item.productId);
+            const price = Number(product?.price) || 0;
+            const qty = Math.max(1, Number(item?.qty) || 1);
+            const lineTotal = Math.round(price * qty * 100) / 100;
+
+            return {
+              product: {
+                _id: normalizeId(product?._id || item.productId),
+                name: product?.name || "Product",
+                price,
+                images: product?.images || [],
+              },
+              qty,
+              lineTotal,
+            };
+          } catch {
+            warnings.push(`Product ${item.productId} not found, skipped`);
+            return null;
+          }
+        })
+      );
+
+      const items = hydrated.filter(Boolean);
+      const subtotal = Math.round(items.reduce((sum, it) => sum + it.lineTotal, 0) * 100) / 100;
+      const deliveryCharge = subtotal >= 1000 || subtotal === 0 ? 0 : 50;
+      const discountPercent = 0;
+      const discountAmount = 0;
+      const totalPayable = Math.round((subtotal + deliveryCharge) * 100) / 100;
+
+      setLocalCart({
+        items,
+        subtotal,
+        deliveryCharge,
+        discountPercent,
+        discountAmount,
+        totalPayable,
+        warnings,
+      });
+    } catch (error) {
+      console.error("buildGuestCartView error:", error);
+      setLocalCart({
+        items: [],
+        subtotal: 0,
+        deliveryCharge: 0,
+        discountPercent: 0,
+        discountAmount: 0,
+        totalPayable: 0,
+        warnings: ["Could not read guest cart"],
+      });
+    }
+  };
+
   useEffect(() => {
     if (!user) {
+      buildGuestCartView();
       setLoading(false);
       return;
     }
@@ -37,8 +115,17 @@ const CartPage = () => {
   const handleRemoveItem = async (productId) => {
     setRemovingItems(prev => new Set(prev).add(productId));
     try {
-      await removeItemFromCart(productId, user);
-      await handleFetchCart(); // Refresh cart data
+      if (user) {
+        await removeItemFromCart(productId, user);
+        await handleFetchCart(); // Refresh cart data
+      } else {
+        const parsed = JSON.parse(localStorage.getItem("guestCart") || '{"items":[]}');
+        const items = Array.isArray(parsed?.items) ? parsed.items : [];
+        const nextItems = items.filter((it) => normalizeId(it.productId) !== normalizeId(productId));
+        localStorage.setItem("guestCart", JSON.stringify({ items: nextItems }));
+        await buildGuestCartView();
+        toast.success("Item removed from guest cart!");
+      }
     } catch {
       // Error already handled in removeItemFromCart
     } finally {
@@ -52,8 +139,17 @@ const CartPage = () => {
 
   const handleClearCart = async () => {
     try {
-      await clearCart(user);
-      await handleFetchCart(); // Refresh cart data
+      if (user) {
+        await clearCart(user);
+        await handleFetchCart(); // Refresh cart data
+      } else {
+        if (!window.confirm("Are you sure you want to clear your entire cart?")) {
+          return;
+        }
+        localStorage.removeItem("guestCart");
+        await buildGuestCartView();
+        toast.success("Guest cart cleared successfully!");
+      }
     } catch {
       // Error already handled in clearCart
     }
@@ -62,8 +158,23 @@ const CartPage = () => {
   const handleUpdateQuantity = async (productId, newQty) => {
     setUpdatingQuantities(prev => new Set(prev).add(productId));
     try {
-      await updateCartItemQuantity(productId, newQty, user);
-      await handleFetchCart(); // Refresh cart data
+      if (user) {
+        await updateCartItemQuantity(productId, newQty, user);
+        await handleFetchCart(); // Refresh cart data
+      } else {
+        if (newQty < 1) {
+          return;
+        }
+        const parsed = JSON.parse(localStorage.getItem("guestCart") || '{"items":[]}');
+        const items = Array.isArray(parsed?.items) ? parsed.items : [];
+        const nextItems = items.map((it) =>
+          normalizeId(it.productId) === normalizeId(productId)
+            ? { ...it, qty: newQty }
+            : it
+        );
+        localStorage.setItem("guestCart", JSON.stringify({ items: nextItems }));
+        await buildGuestCartView();
+      }
     } catch {
       // Error already handled in updateCartItemQuantity
     } finally {
@@ -75,28 +186,23 @@ const CartPage = () => {
     }
   };
 
-  const handleCheckout = async () => {
-    setIsCheckingOut(true);
-    try {
-      await api.post("/orders", { paymentMethod: "COD" });
-
-      // ✅ 1. Show success popup
-      toast.success("Order placed successfully!");
-
-      // ✅ 2. Clear cart visually
-      setLocalCart({ items: [] });
-
-    } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Failed to place order"
-      );
-    } finally {
-      setIsCheckingOut(false);
+  const handleCheckout = () => {
+    if (!user) {
+      toast.error("Please login to checkout");
+      openModal("login");
+      return;
     }
+
+    navigate("/checkout");
   };
 
   // 🔴 Apply discount code and refetch cart
   const handleApplyDiscount = async () => {
+    if (!user) {
+      toast.error("Discount is applied from backend after login.");
+      return;
+    }
+
     if (!discount.trim()) {
       toast.error("Please enter a discount code or value");
       return;
@@ -119,9 +225,6 @@ const CartPage = () => {
     }
   };
 
-  if (!user) {
-    return <p className="p-4 text-center text-red-500">Please log in to view your cart.</p>;
-  }
   if (loading) {
     return <p className="p-4 text-center">Loading cart...</p>;
   }
@@ -257,10 +360,9 @@ const CartPage = () => {
           <div className="mt-6 flex justify-center">
             <button
               onClick={handleCheckout}
-              disabled={isCheckingOut}
-              className="cosmic-button disabled:opacity-50"
+              className="cosmic-button"
             >
-              {isCheckingOut ? "Processing..." : "Checkout (Cash on Delivery)"}
+              Proceed to Checkout
             </button>
           </div>
         </div>

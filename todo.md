@@ -1,2 +1,0 @@
-- [x] Modify ProductDetail.jsx to fetch product from API using fetchProductById instead of static JSON
-- [ ] Test product detail page and add to cart functionality
